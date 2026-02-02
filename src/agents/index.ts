@@ -9,6 +9,10 @@ import { architectFactory } from "./architect.js";
 import { documentationWriterFactory } from "./documentation-writer.js";
 import { performanceOptimizerFactory } from "./performance-optimizer.js";
 import { devopsSpecialistFactory } from "./devops-specialist.js";
+import { backendSpecialistFactory } from "./backend-specialist.js";
+import { frontendSpecialistFactory } from "./frontend-specialist.js";
+import { databaseSpecialistFactory } from "./database-specialist.js";
+import { mobileSpecialistFactory } from "./mobile-specialist.js";
 
 export const agentFactories: AgentFactory[] = [
   codeReviewerFactory,
@@ -21,4 +25,8 @@ export const agentFactories: AgentFactory[] = [
   documentationWriterFactory,
   performanceOptimizerFactory,
   devopsSpecialistFactory,
+  backendSpecialistFactory,
+  frontendSpecialistFactory,
+  databaseSpecialistFactory,
+  mobileSpecialistFactory,
 ];

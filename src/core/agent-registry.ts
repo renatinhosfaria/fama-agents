@@ -2,8 +2,13 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { resolve, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractFrontmatter, type AgentFrontmatter } from "../utils/frontmatter.js";
-import type { AgentConfig, AgentFactory, AgentMemory, WorkflowPhase } from "./types.js";
-import type { AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
+import type {
+  AgentConfig,
+  AgentFactory,
+  AgentMemory,
+  FamaAgentDefinition,
+  WorkflowPhase,
+} from "./types.js";
 import { agentFactories } from "../agents/index.js";
 import { buildAgentPrompt } from "../agents/build-prompt.js";
 import { log } from "../utils/logger.js";
@@ -47,12 +52,13 @@ function loadAgentPlaybook(filePath: string): AgentConfig | null {
     const name = normalizeOptionalString(frontmatter.name, "name", context) ?? slug;
     const description =
       normalizeOptionalString(frontmatter.description, "description", context) ?? "";
-    const tools =
-      normalizeOptionalStringArray(frontmatter.tools, "tools", context) ??
-      ["Read", "Grep", "Glob"];
+    const tools = normalizeOptionalStringArray(frontmatter.tools, "tools", context) ?? [
+      "Read",
+      "Grep",
+      "Glob",
+    ];
     const phases = normalizeOptionalPhases(frontmatter.phases, context) ?? [];
-    const defaultSkills =
-      normalizeOptionalStringArray(frontmatter.skills, "skills", context) ?? [];
+    const defaultSkills = normalizeOptionalStringArray(frontmatter.skills, "skills", context) ?? [];
     const model = normalizeOptionalModel(frontmatter.model, context) ?? "sonnet";
 
     return {
@@ -71,7 +77,9 @@ function loadAgentPlaybook(filePath: string): AgentConfig | null {
       hasSidecar: frontmatter.hasSidecar ?? false,
     };
   } catch (err) {
-    log.warn(`Failed to load agent playbook "${filePath}": ${err instanceof Error ? err.message : String(err)}`);
+    log.warn(
+      `Failed to load agent playbook "${filePath}": ${err instanceof Error ? err.message : String(err)}`,
+    );
     return null;
   }
 }
@@ -124,10 +132,7 @@ export class AgentRegistry {
 
     // Load project playbooks (shadow built-in)
     const projectAgentsDir = getProjectAgentsDir(this.projectDir);
-    if (
-      existsSync(projectAgentsDir) &&
-      !pathsEqual(projectAgentsDir, builtInDir)
-    ) {
+    if (existsSync(projectAgentsDir) && !pathsEqual(projectAgentsDir, builtInDir)) {
       for (const file of readdirSync(projectAgentsDir)) {
         if (!file.endsWith(".md")) continue;
         const config = loadAgentPlaybook(resolve(projectAgentsDir, file));
@@ -176,7 +181,7 @@ export class AgentRegistry {
     slug: string,
     skillContents: string[],
     memory?: AgentMemory,
-  ): AgentDefinition | null {
+  ): FamaAgentDefinition | null {
     const config = this.getBySlug(slug);
     if (!config) return null;
 

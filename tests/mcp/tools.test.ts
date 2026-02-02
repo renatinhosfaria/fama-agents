@@ -101,11 +101,11 @@ describe("MCP tools backing logic", () => {
   });
 
   describe("fama_workflow_advance equivalent", () => {
-    it("should advance workflow phase", () => {
+    it("should advance workflow phase", async () => {
       const engine = new WorkflowEngine(TEST_DIR);
       engine.init("test", ProjectScale.SMALL);
 
-      const result = engine.advance();
+      const result = await engine.advance();
       expect(result).not.toBeNull();
 
       const summary = engine.getSummary();

@@ -91,11 +91,11 @@ describe("workflow commands", () => {
   });
 
   describe("workflowAdvanceCommand", () => {
-    it("should advance to next phase", () => {
+    it("should advance to next phase", async () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       workflowInitCommand("test", { cwd: TEST_DIR, scale: "small" });
 
-      workflowAdvanceCommand({ cwd: TEST_DIR });
+      await workflowAdvanceCommand({ cwd: TEST_DIR });
 
       // Should have advanced from P to E
       const advanceCalls = consoleSpy.mock.calls.filter((call) =>
@@ -105,9 +105,9 @@ describe("workflow commands", () => {
       consoleSpy.mockRestore();
     });
 
-    it("should warn when no workflow exists", () => {
+    it("should warn when no workflow exists", async () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-      workflowAdvanceCommand({ cwd: TEST_DIR });
+      await workflowAdvanceCommand({ cwd: TEST_DIR });
 
       const warnCalls = consoleSpy.mock.calls.filter((call) =>
         call.some((arg) => typeof arg === "string" && arg.includes("No active workflow")),

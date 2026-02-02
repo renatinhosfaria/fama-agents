@@ -63,7 +63,7 @@ function buildCriticalActionsSection(actions: string[]): string {
 
 /**
  * Shared prompt builder for agent factories.
- * Composes: Persona → Critical Actions → Memory → Playbook → Skills
+ * Composes: Persona → Critical Actions → Memory → Stack → Playbook → Skills
  */
 export function buildAgentPrompt(opts: BuildPromptOptions): string {
   const parts: string[] = [];
@@ -76,8 +76,19 @@ export function buildAgentPrompt(opts: BuildPromptOptions): string {
     parts.push(buildCriticalActionsSection(opts.criticalActions));
   }
 
-  if (opts.memory && (Object.keys(opts.memory.preferences).length > 0 || opts.memory.entries.length > 0)) {
+  if (
+    opts.memory &&
+    (Object.keys(opts.memory.preferences).length > 0 || opts.memory.entries.length > 0)
+  ) {
     parts.push(buildMemorySection(opts.memory));
+  }
+
+  if (opts.stackContext) {
+    parts.push(opts.stackContext);
+  }
+
+  if (opts.codebaseContext) {
+    parts.push(opts.codebaseContext);
   }
 
   parts.push(opts.playbookContent);

@@ -9,6 +9,7 @@ import { GateCheckError, WorkflowStateError } from "../core/errors.js";
 import { PHASE_DEFINITIONS } from "./phases.js";
 import { getPhasesForScale } from "./scaling.js";
 import { checkGate } from "./gates.js";
+import { GateRegistry } from "./gate-registry.js";
 import { loadWorkflowState, saveWorkflowState } from "./status.js";
 
 /**
@@ -17,10 +18,12 @@ import { loadWorkflowState, saveWorkflowState } from "./status.js";
 export class WorkflowOrchestrator {
   private projectDir: string;
   private gates?: WorkflowGatesConfig;
+  private gateRegistry: GateRegistry;
 
   constructor(projectDir: string, gates?: WorkflowGatesConfig) {
     this.projectDir = projectDir;
     this.gates = gates;
+    this.gateRegistry = new GateRegistry();
   }
 
   /** Initialize a new workflow. */
@@ -70,7 +73,7 @@ export class WorkflowOrchestrator {
   }
 
   /** Advance to the next phase. Returns the new phase or null if complete. */
-  advance(): { phase: WorkflowPhase; state: WorkflowState } | null {
+  async advance(): Promise<{ phase: WorkflowPhase; state: WorkflowState } | null> {
     const state = this.getState();
     if (!state) return null;
 
@@ -98,10 +101,25 @@ export class WorkflowOrchestrator {
       return null;
     }
 
-    // Check gate
+    // Check built-in gates
     const gate = checkGate(state, state.currentPhase, nextPhase, this.gates);
     if (!gate.passed) {
       throw new GateCheckError(gate.reason ?? "Unknown gate failure");
+    }
+
+    // Check dynamic gates (from config)
+    if (this.gates?.gates && this.gates.gates.length > 0) {
+      const dynamicResult = await this.gateRegistry.check(
+        this.gates.gates,
+        state,
+        state.currentPhase,
+        nextPhase,
+        this.projectDir,
+      );
+      if (!dynamicResult.passed) {
+        const hints = dynamicResult.hints?.length ? ` Hints: ${dynamicResult.hints.join("; ")}` : "";
+        throw new GateCheckError((dynamicResult.reason ?? "Dynamic gate check failed") + hints);
+      }
     }
 
     // Complete current (if not already completed), start next

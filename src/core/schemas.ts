@@ -5,14 +5,12 @@ import { ProjectScale } from "./types.js";
 
 export const WorkflowPhaseSchema = z.enum(["P", "R", "E", "V", "C"]);
 
-export const AgentModelSchema = z.enum(["sonnet", "opus", "haiku", "inherit"]);
-
-export const PhaseStatusValueSchema = z.enum([
-  "pending",
-  "in_progress",
-  "completed",
-  "skipped",
+export const AgentModelSchema = z.union([
+  z.enum(["sonnet", "opus", "haiku", "inherit"]),
+  z.string().regex(/^[a-z][a-z0-9]*\/[\w.-]+$/, "Provider/model format, e.g. 'openai/gpt-4o'"),
 ]);
+
+export const PhaseStatusValueSchema = z.enum(["pending", "in_progress", "completed", "skipped"]);
 
 // ─── Composite schemas ───
 
@@ -50,9 +48,16 @@ export const TeamConfigSchema = z.object({
 
 // ─── Config schemas ───
 
+export const GateDefinitionSchema = z.object({
+  type: z.string().min(1),
+  phases: z.array(z.string().regex(/^[PREVC]->[PREVC]$/)),
+  config: z.record(z.string(), z.unknown()).optional(),
+});
+
 export const WorkflowGatesConfigSchema = z.object({
   requirePlan: z.boolean().default(true),
   requireApproval: z.boolean().default(false),
+  gates: z.array(GateDefinitionSchema).optional(),
 });
 
 export const WorkflowConfigSchema = z.object({
@@ -60,11 +65,18 @@ export const WorkflowConfigSchema = z.object({
   gates: WorkflowGatesConfigSchema.default({ requirePlan: true, requireApproval: false }),
 });
 
+export const ProviderConfigSchema = z.object({
+  default: z.string().default("claude"),
+  fallback: z.array(z.string()).optional(),
+  apiKeys: z.record(z.string(), z.string()).optional(),
+});
+
 export const FamaConfigSchema = z.object({
   model: z.string().default("sonnet"),
   maxTurns: z.number().int().positive().default(50),
   lang: z.string().default("pt-BR"),
   skillsDir: z.string().default("./skills"),
+  provider: ProviderConfigSchema.optional(),
   workflow: WorkflowConfigSchema.default({
     defaultScale: ProjectScale.MEDIUM,
     gates: { requirePlan: true, requireApproval: false },
@@ -174,8 +186,6 @@ export const RunAgentOptionsSchema = z.object({
   maxTurns: z.number().int().positive().optional(),
   cwd: z.string().optional(),
   verbose: z.boolean().optional(),
-  permissionMode: z
-    .enum(["default", "acceptEdits", "bypassPermissions"])
-    .optional(),
+  permissionMode: z.enum(["default", "acceptEdits", "bypassPermissions"]).optional(),
   onEvent: z.function().optional(),
 });

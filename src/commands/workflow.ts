@@ -88,7 +88,7 @@ export function workflowStatusCommand(opts: WorkflowStatusOptions = {}) {
   }
 }
 
-export function workflowAdvanceCommand(opts: WorkflowAdvanceOptions = {}) {
+export async function workflowAdvanceCommand(opts: WorkflowAdvanceOptions = {}) {
   const cwd = opts.cwd ?? process.cwd();
   const config = loadConfig(cwd);
   const engine = new WorkflowEngine(cwd, { gates: config.workflow.gates });
@@ -104,7 +104,7 @@ export function workflowAdvanceCommand(opts: WorkflowAdvanceOptions = {}) {
   }
 
   try {
-    const result = engine.advance();
+    const result = await engine.advance();
     if (result) {
       log.success(`Advanced to phase ${result.phase}.`);
       console.log(engine.getSummary());
@@ -275,7 +275,7 @@ export async function workflowRunCommand(
 
   if (opts.advance) {
     try {
-      const advanced = engine.advance();
+      const advanced = await engine.advance();
       if (advanced) {
         log.success(`Advanced to phase ${advanced.phase}.`);
       } else {

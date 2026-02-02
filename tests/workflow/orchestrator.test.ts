@@ -59,26 +59,26 @@ describe("WorkflowOrchestrator", () => {
     expect(orch.getState()).toBeNull();
   });
 
-  it("should advance to next phase", () => {
+  it("should advance to next phase", async () => {
     const orch = new WorkflowOrchestrator(TEST_DIR);
     orch.init("test", ProjectScale.SMALL);
 
     // SMALL: P → E → V
-    const result = orch.advance();
+    const result = await orch.advance();
     expect(result).not.toBeNull();
     expect(result!.phase).toBe("E");
     expect(result!.state.phases["P"].status).toBe("completed");
     expect(result!.state.phases["E"].status).toBe("in_progress");
   });
 
-  it("should advance after completing current phase with requirePlan gate", () => {
+  it("should advance after completing current phase with requirePlan gate", async () => {
     const orch = new WorkflowOrchestrator(TEST_DIR, { requirePlan: true, requireApproval: false });
     orch.init("test", ProjectScale.MEDIUM);
 
     // MEDIUM: P → R → E → V
     // Complete P first so the gate passes
     orch.completeCurrentPhase();
-    const result = orch.advance();
+    const result = await orch.advance();
     expect(result).not.toBeNull();
     expect(result!.phase).toBe("R");
   });
@@ -112,16 +112,16 @@ describe("WorkflowOrchestrator", () => {
     expect(agents).toContain("architect");
   });
 
-  it("should detect workflow completion", () => {
+  it("should detect workflow completion", async () => {
     const orch = new WorkflowOrchestrator(TEST_DIR);
     orch.init("test", ProjectScale.QUICK); // E → V
 
     expect(orch.isComplete()).toBe(false);
     orch.completeCurrentPhase(); // Complete E
-    orch.advance(); // E → V (starts V)
+    await orch.advance(); // E → V (starts V)
     expect(orch.isComplete()).toBe(false);
     orch.completeCurrentPhase(); // Complete V
-    const last = orch.advance(); // Should return null (last phase, auto-completes)
+    const last = await orch.advance(); // Should return null (last phase, auto-completes)
     expect(last).toBeNull();
     expect(orch.isComplete()).toBe(true);
   });

@@ -1,5 +1,16 @@
 import type { AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
 
+// Re-export SDK type for backward compat
+export type { AgentDefinition };
+
+// Internal agent definition (looser model type for multi-provider support)
+export interface FamaAgentDefinition {
+  description: string;
+  prompt: string;
+  tools?: string[];
+  model?: string;
+}
+
 // ─── Workflow Phases ───
 export type WorkflowPhase = "P" | "R" | "E" | "V" | "C";
 
@@ -10,11 +21,7 @@ export enum ProjectScale {
   LARGE = 3,
 }
 
-export type PhaseStatusValue =
-  | "pending"
-  | "in_progress"
-  | "completed"
-  | "skipped";
+export type PhaseStatusValue = "pending" | "in_progress" | "completed" | "skipped";
 
 export interface PhaseStatus {
   status: PhaseStatusValue;
@@ -83,7 +90,7 @@ export interface AgentConfig {
   description: string;
   prompt: string;
   tools: string[];
-  model: "sonnet" | "opus" | "haiku" | "inherit";
+  model: string;
   phases: WorkflowPhase[];
   defaultSkills: string[];
   filePath: string;
@@ -99,6 +106,8 @@ export interface BuildPromptOptions {
   persona?: PersonaConfig;
   criticalActions?: string[];
   memory?: AgentMemory;
+  stackContext?: string;
+  codebaseContext?: string;
 }
 
 export interface AgentFactory {
@@ -107,8 +116,8 @@ export interface AgentFactory {
   phases: WorkflowPhase[];
   defaultSkills: string[];
   tools: string[];
-  model: "sonnet" | "opus" | "haiku" | "inherit";
-  build(opts: BuildPromptOptions): AgentDefinition;
+  model: string;
+  build(opts: BuildPromptOptions): FamaAgentDefinition;
 }
 
 // ─── Runner ───
@@ -144,9 +153,16 @@ export interface RunAgentEvent {
 }
 
 // ─── Config ───
+export interface GateDefinition {
+  type: string;
+  phases: string[];
+  config?: Record<string, unknown>;
+}
+
 export interface WorkflowGatesConfig {
   requirePlan: boolean;
   requireApproval: boolean;
+  gates?: GateDefinition[];
 }
 
 export interface FamaConfig {
@@ -154,6 +170,7 @@ export interface FamaConfig {
   maxTurns: number;
   lang: string;
   skillsDir: string;
+  provider?: ProviderConfig;
   workflow: {
     defaultScale: ProjectScale;
     gates: WorkflowGatesConfig;
@@ -209,6 +226,42 @@ export interface ModuleManifest {
   agents?: string[];
   skills?: string[];
   workflows?: string[];
+}
+
+// ─── LLM Provider ───
+export interface LLMQueryOptions {
+  model?: string;
+  maxTurns?: number;
+  tools?: string[];
+  cwd?: string;
+  permissionMode?: string;
+  agents?: Record<string, { description: string; prompt: string; tools?: string[] }>;
+  systemPrompt: string;
+  settingSources?: string[];
+}
+
+export interface LLMStreamEvent {
+  type: "assistant" | "result";
+  text?: string;
+  result?: string;
+  costUSD?: number;
+  numTurns?: number;
+  subtype?: "success" | "error";
+  errors?: unknown[];
+  message?: { content: unknown[] };
+}
+
+export interface LLMProvider {
+  readonly name: string;
+  readonly supportsSubagents: boolean;
+  readonly supportsMcp: boolean;
+  query(prompt: string, options: LLMQueryOptions): AsyncIterable<LLMStreamEvent>;
+}
+
+export interface ProviderConfig {
+  default: string;
+  fallback?: string[];
+  apiKeys?: Record<string, string>;
 }
 
 // ─── Agent Memory (Sidecar) ───

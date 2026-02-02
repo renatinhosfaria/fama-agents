@@ -1,16 +1,11 @@
-import { query } from "@anthropic-ai/claude-agent-sdk";
 import type { AgentRegistry } from "./agent-registry.js";
 import type { SkillRegistry } from "./skill-registry.js";
-import type { RunAgentOptions } from "./types.js";
+import type { ProviderConfig, RunAgentOptions } from "./types.js";
 import { log } from "../utils/logger.js";
 import { startSpan, endSpan } from "../utils/observability.js";
 import { loadMemory } from "./agent-memory.js";
-import {
-  ApiKeyMissingError,
-  AgentNotFoundError,
-  AgentBuildError,
-  AgentExecutionError,
-} from "./errors.js";
+import { AgentNotFoundError, AgentBuildError, AgentExecutionError } from "./errors.js";
+import { resolveProviderWithFallback } from "./llm-provider.js";
 
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 1000;
@@ -34,20 +29,16 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Runs an agent using the Claude Agent SDK query() function.
+ * Runs an agent using the configured LLM provider (Claude SDK by default).
  * Composes: agent playbook + active skills → system prompt
- * Registers other agents as subagents via SDK agents param.
+ * Registers other agents as subagents via SDK agents param (Claude only).
  */
 export async function runAgent(
   options: RunAgentOptions,
   agentRegistry: AgentRegistry,
   skillRegistry: SkillRegistry,
+  providerConfig?: ProviderConfig,
 ) {
-  // Validate API key
-  if (!process.env["ANTHROPIC_API_KEY"]) {
-    throw new ApiKeyMissingError();
-  }
-
   const agentSlug = options.agent;
   if (!agentSlug) {
     throw new AgentNotFoundError("(undefined)");
@@ -59,10 +50,7 @@ export async function runAgent(
   }
 
   // Collect skill content to inject
-  const skillSlugs = [
-    ...agentConfig.defaultSkills,
-    ...(options.skills ?? []),
-  ];
+  const skillSlugs = [...agentConfig.defaultSkills, ...(options.skills ?? [])];
   const uniqueSlugs = [...new Set(skillSlugs)];
   const missingSkills: string[] = [];
   const skillContents = uniqueSlugs.flatMap((slug) => {
@@ -89,21 +77,26 @@ export async function runAgent(
     throw new AgentBuildError(agentSlug);
   }
 
-  // Build subagent definitions (all OTHER agents as potential subagents)
-  const subagents: Record<
-    string,
-    { description: string; prompt: string; tools?: string[] }
-  > = {};
-  for (const otherAgent of agentRegistry.getAll()) {
-    if (otherAgent.slug === agentSlug) continue;
-    const otherSkills = skillRegistry.getContents(otherAgent.defaultSkills);
-    const otherDef = agentRegistry.buildDefinition(
-      otherAgent.slug,
-      otherSkills,
-    );
-    if (otherDef) {
-      subagents[otherAgent.slug] = otherDef;
+  // Resolve provider and model
+  const modelInput =
+    options.model ?? (agentConfig.model === "inherit" ? undefined : agentConfig.model);
+
+  const { provider, resolvedModel } = await resolveProviderWithFallback(modelInput, providerConfig);
+
+  // Build subagent definitions (only if provider supports them)
+  const subagents: Record<string, { description: string; prompt: string; tools?: string[] }> = {};
+
+  if (provider.supportsSubagents) {
+    for (const otherAgent of agentRegistry.getAll()) {
+      if (otherAgent.slug === agentSlug) continue;
+      const otherSkills = skillRegistry.getContents(otherAgent.defaultSkills);
+      const otherDef = agentRegistry.buildDefinition(otherAgent.slug, otherSkills);
+      if (otherDef) {
+        subagents[otherAgent.slug] = otherDef;
+      }
     }
+  } else if (options.verbose) {
+    log.warn(`Provider "${provider.name}" does not support subagents.`);
   }
 
   const allowedTools = [
@@ -113,31 +106,38 @@ export async function runAgent(
 
   if (options.verbose) {
     log.dim(`Agent: ${agentSlug}`);
+    log.dim(`Provider: ${provider.name}`);
     log.dim(`Skills: ${uniqueSlugs.join(", ") || "(none)"}`);
     log.dim(`Tools: ${allowedTools.join(", ")}`);
     log.dim(`Subagents: ${Object.keys(subagents).join(", ") || "(none)"}`);
   }
 
-  // Resolve model
-  const resolvedModel =
-    options.model ??
-    (agentConfig.model === "inherit" ? undefined : agentConfig.model);
-
   // Dry-run: show config without executing
   if (options.dryRun) {
     log.info("[DRY RUN] Would execute agent with:");
-    log.dim(JSON.stringify({
-      agent: agentSlug,
-      skills: uniqueSlugs,
-      tools: allowedTools,
-      model: resolvedModel,
-      maxTurns: options.maxTurns,
-      subagents: Object.keys(subagents),
-    }, null, 2));
+    log.dim(
+      JSON.stringify(
+        {
+          agent: agentSlug,
+          provider: provider.name,
+          skills: uniqueSlugs,
+          tools: allowedTools,
+          model: resolvedModel,
+          maxTurns: options.maxTurns,
+          subagents: Object.keys(subagents),
+        },
+        null,
+        2,
+      ),
+    );
     return "[dry-run] No execution performed.";
   }
 
-  const span = startSpan("agent.run", { agent: agentSlug, model: resolvedModel });
+  const span = startSpan("agent.run", {
+    agent: agentSlug,
+    model: resolvedModel,
+    provider: provider.name,
+  });
   const startedAt = Date.now();
   let costUSD: number | undefined;
   let numTurns: number | undefined;
@@ -148,52 +148,37 @@ export async function runAgent(
     // Retry loop for transient API errors
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const queryIterator = query({
-          prompt: options.task,
-          options: {
-            systemPrompt: agentDef.prompt,
-            allowedTools,
-            agents: Object.keys(subagents).length > 0 ? subagents : undefined,
-            model: resolvedModel,
-            maxTurns: options.maxTurns,
-            cwd: options.cwd ?? process.cwd(),
-            permissionMode: options.permissionMode ?? "default",
-            settingSources: ["project"],
-          },
+        const queryIterator = provider.query(options.task, {
+          systemPrompt: agentDef.prompt,
+          tools: allowedTools,
+          agents: Object.keys(subagents).length > 0 ? subagents : undefined,
+          model: resolvedModel,
+          maxTurns: options.maxTurns,
+          cwd: options.cwd ?? process.cwd(),
+          permissionMode: options.permissionMode ?? "default",
+          settingSources: ["project"],
         });
 
         for await (const message of queryIterator) {
           if (message.type === "assistant") {
-            const content = message.message.content;
-            if (Array.isArray(content)) {
-              for (const block of content) {
-                if ("text" in block && block.text) {
-                  if (options.verbose) {
-                    process.stdout.write(block.text);
-                  }
-                }
-              }
+            if (message.text && options.verbose) {
+              process.stdout.write(message.text);
             }
           }
 
           if (message.type === "result") {
             if (message.subtype === "success") {
               result = message.result;
-              costUSD = message.total_cost_usd;
-              numTurns = message.num_turns;
+              costUSD = message.costUSD;
+              numTurns = message.numTurns;
               if (options.verbose) {
                 log.dim(
-                  `\nCost: $${message.total_cost_usd.toFixed(4)} | Turns: ${message.num_turns}`,
+                  `\nCost: $${(message.costUSD ?? 0).toFixed(4)} | Turns: ${message.numTurns ?? 1}`,
                 );
               }
             } else {
-              const rawErrors =
-                "errors" in message && Array.isArray(message.errors)
-                  ? message.errors
-                  : [];
-              const errorMessages = rawErrors.map((e) =>
-                typeof e === "string" ? e : String(e),
-              );
+              const rawErrors = message.errors ?? [];
+              const errorMessages = rawErrors.map((e) => (typeof e === "string" ? e : String(e)));
               throw new AgentExecutionError(
                 agentSlug,
                 new Error(`Query failed (${message.subtype}):\n${errorMessages.join("\n")}`),

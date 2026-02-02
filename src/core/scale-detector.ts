@@ -100,6 +100,22 @@ export function autoSelectAgent(description: string): string {
   if (/\b(deploy|docker|ci.?cd|pipeline|infra|devops)/i.test(lower))
     return "devops-specialist";
 
+  // Backend keywords
+  if (/\b(api|endpoint|rest|graphql|controller|middleware|backend|servidor|rota)/i.test(lower))
+    return "backend-specialist";
+
+  // Frontend keywords
+  if (/\b(component|ui|ux|frontend|css|tailwind|react|vue|angular|svelte|tela|interface)/i.test(lower))
+    return "frontend-specialist";
+
+  // Database keywords
+  if (/\b(database|schema|migration|query|sql|index|tabela|banco|modelo)/i.test(lower))
+    return "database-specialist";
+
+  // Mobile keywords
+  if (/\b(mobile|react.?native|flutter|ios|android|app|celular)/i.test(lower))
+    return "mobile-specialist";
+
   // Default: feature developer
   return "feature-developer";
 }

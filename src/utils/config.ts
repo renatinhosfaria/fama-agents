@@ -4,6 +4,7 @@ import { parse as parseYaml } from "yaml";
 import { ProjectScale, type FamaConfig } from "../core/types.js";
 import { FamaConfigSchema } from "../core/schemas.js";
 import { log } from "./logger.js";
+import { initI18n } from "./i18n/index.js";
 
 const DEFAULT_CONFIG: FamaConfig = {
   model: "sonnet",
@@ -38,10 +39,7 @@ function deepMerge(
       typeof tgtVal === "object" &&
       !Array.isArray(tgtVal)
     ) {
-      deepMerge(
-        tgtVal as Record<string, unknown>,
-        srcVal as Record<string, unknown>,
-      );
+      deepMerge(tgtVal as Record<string, unknown>, srcVal as Record<string, unknown>);
     } else {
       target[key] = srcVal;
     }
@@ -63,10 +61,7 @@ export function loadConfig(cwd: string = process.cwd()): FamaConfig {
       const raw = readFileSync(configPath, "utf-8");
       const parsed = parseYaml(raw);
       if (parsed && typeof parsed === "object") {
-        deepMerge(
-          config as unknown as Record<string, unknown>,
-          parsed as Record<string, unknown>,
-        );
+        deepMerge(config as unknown as Record<string, unknown>, parsed as Record<string, unknown>);
       }
     } catch (err) {
       log.warn(`Failed to parse .fama.yaml: ${err instanceof Error ? err.message : String(err)}`);
@@ -76,7 +71,9 @@ export function loadConfig(cwd: string = process.cwd()): FamaConfig {
   // Validate merged config with Zod (fills defaults for missing fields)
   const validated = FamaConfigSchema.safeParse(config);
   if (!validated.success) {
-    log.warn(`Config validation issues: ${validated.error.issues.map((i) => i.message).join(", ")}`);
+    log.warn(
+      `Config validation issues: ${validated.error.issues.map((i) => i.message).join(", ")}`,
+    );
   }
 
   // Environment overrides
@@ -94,8 +91,19 @@ export function loadConfig(cwd: string = process.cwd()): FamaConfig {
     if (!Number.isNaN(parsed) && parsed > 0) config.maxTurns = parsed;
   }
   if (process.env["FAMA_LANG"]) config.lang = process.env["FAMA_LANG"];
-  if (process.env["FAMA_SKILLS_DIR"])
-    config.skillsDir = process.env["FAMA_SKILLS_DIR"];
+  if (process.env["FAMA_SKILLS_DIR"]) config.skillsDir = process.env["FAMA_SKILLS_DIR"];
+  if (process.env["FAMA_PROVIDER"]) {
+    const allowed = ["claude", "anthropic", "openai", "openrouter"];
+    const prov = process.env["FAMA_PROVIDER"];
+    if (allowed.includes(prov)) {
+      config.provider = { ...config.provider, default: prov };
+    } else {
+      log.warn(`Invalid FAMA_PROVIDER "${prov}", using default.`);
+    }
+  }
+
+  // Initialize i18n with resolved language
+  initI18n(config.lang);
 
   return config;
 }

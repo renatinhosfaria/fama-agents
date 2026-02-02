@@ -43,7 +43,7 @@ describe("WorkflowEngine", () => {
     expect(engine.exists()).toBe(true);
   });
 
-  it("should advance phases for SMALL scale", () => {
+  it("should advance phases for SMALL scale", async () => {
     const engine = new WorkflowEngine(TEST_DIR);
     engine.init("test", ProjectScale.SMALL);
 
@@ -52,17 +52,17 @@ describe("WorkflowEngine", () => {
 
     // Complete P and advance to E
     engine.completeCurrent();
-    const result1 = engine.advance();
+    const result1 = await engine.advance();
     expect(result1?.phase).toBe("E");
 
     // Complete E and advance to V
     engine.completeCurrent();
-    const result2 = engine.advance();
+    const result2 = await engine.advance();
     expect(result2?.phase).toBe("V");
 
     // Complete V - workflow done
     engine.completeCurrent();
-    const result3 = engine.advance();
+    const result3 = await engine.advance();
     expect(result3).toBeNull();
     expect(engine.isComplete()).toBe(true);
   });
@@ -85,7 +85,7 @@ describe("WorkflowEngine", () => {
     expect(summary).toContain("Planning");
   });
 
-  it("should handle QUICK scale (E → V only)", () => {
+  it("should handle QUICK scale (E → V only)", async () => {
     const engine = new WorkflowEngine(TEST_DIR);
     engine.init("quick-fix", ProjectScale.QUICK);
 
@@ -93,7 +93,7 @@ describe("WorkflowEngine", () => {
     expect(engine.getStatus()?.phases.P.status).toBe("skipped");
 
     engine.completeCurrent();
-    const result = engine.advance();
+    const result = await engine.advance();
     expect(result?.phase).toBe("V");
   });
 });

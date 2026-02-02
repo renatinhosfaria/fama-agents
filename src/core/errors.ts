@@ -58,10 +58,7 @@ export class AgentExecutionError extends FamaError {
 
 export class AgentBuildError extends FamaError {
   constructor(slug: string) {
-    super(
-      `Failed to build agent definition for "${slug}".`,
-      "AGENT_BUILD_ERROR",
-    );
+    super(`Failed to build agent definition for "${slug}".`, "AGENT_BUILD_ERROR");
     this.name = "AgentBuildError";
   }
 }
@@ -77,6 +74,23 @@ export class GateCheckError extends FamaError {
   constructor(reason: string) {
     super(`Gate check failed: ${reason}`, "GATE_CHECK_ERROR");
     this.name = "GateCheckError";
+  }
+}
+
+export class ProviderError extends FamaError {
+  constructor(provider: string, message: string, cause?: Error) {
+    super(`Provider "${provider}" error: ${message}`, "PROVIDER_ERROR", { cause });
+    this.name = "ProviderError";
+  }
+}
+
+export class ProviderNotFoundError extends FamaError {
+  constructor(provider: string) {
+    super(
+      `Provider "${provider}" not found. Available: claude, openai, openrouter.`,
+      "PROVIDER_NOT_FOUND",
+    );
+    this.name = "ProviderNotFoundError";
   }
 }
 

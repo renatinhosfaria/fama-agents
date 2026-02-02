@@ -82,13 +82,67 @@ export function createCli() {
   registerPartyCommand(program);
   registerModuleCommands(program);
 
+  // fama stack
+  program
+    .command("stack")
+    .description("Detect project tech stack")
+    .option("--json", "Output as JSON")
+    .option("--cwd <path>", "Working directory")
+    .action(async (opts: { json?: boolean; cwd?: string }) => {
+      const { stackCommand } = await import("./commands/stack.js");
+      stackCommand(opts);
+    });
+
+  // fama analyze
+  program
+    .command("analyze")
+    .description("Analyze codebase architecture and structure")
+    .option("--json", "Output as JSON")
+    .option("--cwd <path>", "Working directory")
+    .action(async (opts: { json?: boolean; cwd?: string }) => {
+      const { analyzeCommand } = await import("./commands/analyze.js");
+      analyzeCommand(opts);
+    });
+
+  // fama export
+  program
+    .command("export")
+    .description("Export agents/skills for other AI tools")
+    .option("--preset <preset>", "Preset: cursor, windsurf, copilot, claude-desktop, agents-md, all", "all")
+    .option("--dry-run", "Preview without writing files")
+    .option("--cwd <path>", "Working directory")
+    .action(async (opts: { preset?: string; dryRun?: boolean; cwd?: string }) => {
+      const { exportCommand } = await import("./commands/export.js");
+      exportCommand(opts);
+    });
+
+  // fama fill
+  program
+    .command("fill")
+    .description("Show/fill scaffold documentation status")
+    .option("--status", "Show documentation status only")
+    .option("--dry-run", "Preview without running agents")
+    .option("--cwd <path>", "Working directory")
+    .action(async (opts: { status?: boolean; dryRun?: boolean; cwd?: string }) => {
+      const { fillCommand } = await import("./commands/fill.js");
+      fillCommand(opts);
+    });
+
   // fama init
   program
     .command("init")
     .description("Initialize a new fama project")
     .option("--force", "Overwrite existing config")
+    .option("--interactive", "Run interactive setup wizard")
     .option("--cwd <path>", "Working directory")
-    .action((opts: { force?: boolean; cwd?: string }) => initCommand(opts));
+    .action(async (opts: { force?: boolean; interactive?: boolean; cwd?: string }) => {
+      if (opts.interactive) {
+        const { initInteractive } = await import("./commands/init-interactive.js");
+        await initInteractive(opts);
+      } else {
+        initCommand(opts);
+      }
+    });
 
   // fama completions <shell>
   program
@@ -110,9 +164,7 @@ export function createCli() {
 }
 
 function registerWorkflowCommands(program: Command): void {
-  const workflow = program
-    .command("workflow")
-    .description("Manage PREVEC workflow");
+  const workflow = program.command("workflow").description("Manage PREVEC workflow");
 
   workflow
     .command("init")
@@ -177,10 +229,15 @@ function registerWorkflowCommands(program: Command): void {
     .option("--max-turns <n>", "Maximum turns")
     .option("--verbose", "Show agent tool calls")
     .option("--cwd <path>", "Working directory")
-    .action(async (name: string, opts: { model?: string; maxTurns?: string; verbose?: boolean; cwd?: string }) => {
-      const { workflowExecCommand } = await import("./commands/workflow-exec.js");
-      await workflowExecCommand(name, opts);
-    });
+    .action(
+      async (
+        name: string,
+        opts: { model?: string; maxTurns?: string; verbose?: boolean; cwd?: string },
+      ) => {
+        const { workflowExecCommand } = await import("./commands/workflow-exec.js");
+        await workflowExecCommand(name, opts);
+      },
+    );
 
   workflow
     .command("list-templates")
@@ -193,9 +250,7 @@ function registerWorkflowCommands(program: Command): void {
 }
 
 function registerSkillsCommands(program: Command): void {
-  const skills = program
-    .command("skills")
-    .description("List and show skills");
+  const skills = program.command("skills").description("List and show skills");
 
   skills
     .command("list")
@@ -221,9 +276,7 @@ function registerSkillsCommands(program: Command): void {
 }
 
 function registerAgentsCommands(program: Command): void {
-  const agents = program
-    .command("agents")
-    .description("List and show agents");
+  const agents = program.command("agents").description("List and show agents");
 
   agents
     .command("list")
@@ -258,9 +311,7 @@ function registerAgentsCommands(program: Command): void {
 }
 
 function registerTeamsCommands(program: Command): void {
-  const teams = program
-    .command("teams")
-    .description("Manage team configurations");
+  const teams = program.command("teams").description("Manage team configurations");
 
   teams
     .command("list")
@@ -305,9 +356,7 @@ function registerPartyCommand(program: Command): void {
 }
 
 function registerModuleCommands(program: Command): void {
-  const module = program
-    .command("module")
-    .description("Manage fama modules");
+  const module = program.command("module").description("Manage fama modules");
 
   module
     .command("list")
