@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "ci": "pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -29,6 +30,11 @@
     "coding",
     "ai"
   ],
+  "files": [
+    "dist",
+    "agents",
+    "skills"
+  ],
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.29",
@@ -38,13 +44,16 @@
     "dotenv": "^17.2.3",
     "ora": "^9.1.0",
     "yaml": "^2.8.2",
-    "zod": "^4.3.6"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/node": "^25.2.0",
+    "eslint": "^9.39.2",
     "prettier": "^3.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0",
     "vitest": "^4.0.18"
   }
 }

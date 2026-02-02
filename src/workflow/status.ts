@@ -1,7 +1,9 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { WorkflowState } from "../core/types.js";
+import { WorkflowStateSchema } from "../core/schemas.js";
+import { log } from "../utils/logger.js";
 
 const WORKFLOW_DIR = ".fama/workflow";
 const STATUS_FILE = "status.yaml";
@@ -19,8 +21,15 @@ export function loadWorkflowState(projectDir: string): WorkflowState | null {
 
   try {
     const raw = readFileSync(path, "utf-8");
-    return parseYaml(raw) as WorkflowState;
-  } catch {
+    const parsed = parseYaml(raw);
+    const validated = WorkflowStateSchema.safeParse(parsed);
+    if (!validated.success) {
+      log.warn(`Workflow state validation failed: ${validated.error.issues.map((i) => i.message).join(", ")}`);
+      return parsed as WorkflowState;
+    }
+    return validated.data as WorkflowState;
+  } catch (err) {
+    log.warn(`Failed to read workflow state: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 }
@@ -39,7 +48,9 @@ export function saveWorkflowState(
     mkdirSync(dir, { recursive: true });
   }
 
-  writeFileSync(path, stringifyYaml(state), "utf-8");
+  const tmpPath = path + ".tmp";
+  writeFileSync(tmpPath, stringifyYaml(state), "utf-8");
+  renameSync(tmpPath, path);
 }
 
 /**

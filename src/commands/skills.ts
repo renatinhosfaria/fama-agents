@@ -1,9 +1,22 @@
 import { SkillRegistry } from "../core/skill-registry.js";
+import { loadConfig } from "../utils/config.js";
 import { log } from "../utils/logger.js";
 
-export function skillsListCommand(cwd: string = process.cwd()) {
-  const registry = new SkillRegistry(cwd);
+export function skillsListCommand(cwd: string = process.cwd(), options?: { json?: boolean }) {
+  const config = loadConfig(cwd);
+  const registry = new SkillRegistry(cwd, config.skillsDir);
   const skills = registry.getAll();
+
+  if (options?.json) {
+    console.log(JSON.stringify(skills.map((s) => ({
+      slug: s.slug,
+      name: s.name,
+      description: s.description,
+      phases: s.phases,
+      source: s.source,
+    })), null, 2));
+    return;
+  }
 
   log.heading("Available Skills");
 
@@ -19,7 +32,8 @@ export function skillsListCommand(cwd: string = process.cwd()) {
 }
 
 export function skillsShowCommand(slug: string, cwd: string = process.cwd()) {
-  const registry = new SkillRegistry(cwd);
+  const config = loadConfig(cwd);
+  const registry = new SkillRegistry(cwd, config.skillsDir);
   const skill = registry.getBySlug(slug);
 
   if (!skill) {

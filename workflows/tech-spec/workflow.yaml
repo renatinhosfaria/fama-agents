@@ -1,0 +1,14 @@
+name: tech-spec
+description: "Cria especificação técnica detalhada para uma feature"
+outputDir: .fama/workflow-output/tech-spec
+
+steps:
+  - name: requirements
+    description: "Requisitos técnicos e análise de impacto"
+    agent: architect
+  - name: design
+    description: "Design técnico detalhado com interfaces e modelos"
+    agent: feature-developer
+  - name: spec
+    description: "Documento final de especificação técnica"
+    agent: documentation-writer

@@ -2,9 +2,10 @@ import {
   ProjectScale,
   type WorkflowPhase,
   type WorkflowState,
-  type HistoryEntry,
   type PhaseStatus,
+  type WorkflowGatesConfig,
 } from "../core/types.js";
+import { GateCheckError, WorkflowStateError } from "../core/errors.js";
 import { PHASE_DEFINITIONS } from "./phases.js";
 import { getPhasesForScale } from "./scaling.js";
 import { checkGate } from "./gates.js";
@@ -15,15 +16,20 @@ import { loadWorkflowState, saveWorkflowState } from "./status.js";
  */
 export class WorkflowOrchestrator {
   private projectDir: string;
+  private gates?: WorkflowGatesConfig;
 
-  constructor(projectDir: string) {
+  constructor(projectDir: string, gates?: WorkflowGatesConfig) {
     this.projectDir = projectDir;
+    this.gates = gates;
   }
 
   /** Initialize a new workflow. */
   init(name: string, scale: ProjectScale): WorkflowState {
     const activePhases = getPhasesForScale(scale);
-    const firstPhase = activePhases[0]!;
+    const firstPhase = activePhases[0];
+    if (!firstPhase) {
+      throw new WorkflowStateError(`No active phases for scale ${scale}`);
+    }
 
     const phases = {} as Record<WorkflowPhase, PhaseStatus>;
     const allPhases: WorkflowPhase[] = ["P", "R", "E", "V", "C"];
@@ -87,20 +93,26 @@ export class WorkflowOrchestrator {
       return null;
     }
 
-    const nextPhase = activePhases[currentIndex + 1]!;
-
-    // Check gate
-    const gate = checkGate(state, state.currentPhase, nextPhase);
-    if (!gate.passed) {
-      throw new Error(`Gate check failed: ${gate.reason}`);
+    const nextPhase = activePhases[currentIndex + 1];
+    if (!nextPhase) {
+      return null;
     }
 
-    // Complete current, start next
-    state.phases[state.currentPhase] = {
-      ...state.phases[state.currentPhase],
-      status: "completed",
-      completedAt: new Date().toISOString(),
-    };
+    // Check gate
+    const gate = checkGate(state, state.currentPhase, nextPhase, this.gates);
+    if (!gate.passed) {
+      throw new GateCheckError(gate.reason ?? "Unknown gate failure");
+    }
+
+    // Complete current (if not already completed), start next
+    const previousPhase = state.currentPhase;
+    if (state.phases[previousPhase].status !== "completed") {
+      state.phases[previousPhase] = {
+        ...state.phases[previousPhase],
+        status: "completed",
+        completedAt: new Date().toISOString(),
+      };
+    }
     state.phases[nextPhase] = {
       status: "in_progress",
       startedAt: new Date().toISOString(),
@@ -109,12 +121,26 @@ export class WorkflowOrchestrator {
 
     const now = new Date().toISOString();
     state.history.push(
-      { timestamp: now, phase: activePhases[currentIndex]!, action: "completed" },
+      { timestamp: now, phase: previousPhase, action: "completed" },
       { timestamp: now, phase: nextPhase, action: "started" },
     );
 
     saveWorkflowState(this.projectDir, state);
     return { phase: nextPhase, state };
+  }
+
+  /** Append an output reference to a phase. */
+  appendOutput(phase: WorkflowPhase, output: string): WorkflowState | null {
+    const state = this.getState();
+    if (!state) return null;
+
+    const current = state.phases[phase];
+    const outputs = current.outputs ? [...current.outputs] : [];
+    outputs.push(output);
+    state.phases[phase] = { ...current, outputs };
+
+    saveWorkflowState(this.projectDir, state);
+    return state;
   }
 
   /** Complete the current phase without advancing. */

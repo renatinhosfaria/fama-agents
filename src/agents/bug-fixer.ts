@@ -1,25 +1,21 @@
-import type { AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
-import type { AgentFactory } from "../core/types.js";
+import type { AgentFactory, BuildPromptOptions } from "../core/types.js";
+import { buildAgentPrompt } from "./build-prompt.js";
 
 export const bugFixerFactory: AgentFactory = {
   slug: "bug-fixer",
+  description:
+    "Systematic bug fixer. Use when diagnosing and fixing bugs with root cause analysis.",
   phases: ["E"],
   defaultSkills: ["systematic-debugging", "test-driven-development"],
   tools: ["Read", "Grep", "Glob", "Edit", "Write", "Bash"],
   model: "sonnet",
 
-  build(playbookContent: string, skillContents: string[]): AgentDefinition {
-    const parts = [playbookContent];
-    for (const skill of skillContents) {
-      parts.push(`\n---\n## Active Skill\n${skill}`);
-    }
-
+  build(opts: BuildPromptOptions) {
     return {
-      description:
-        "Systematic bug fixer. Use when diagnosing and fixing bugs with root cause analysis.",
-      prompt: parts.join("\n"),
-      tools: ["Read", "Grep", "Glob", "Edit", "Write", "Bash"],
-      model: "sonnet",
+      description: this.description,
+      prompt: buildAgentPrompt(opts),
+      tools: this.tools,
+      model: this.model === "inherit" ? undefined : this.model,
     };
   },
 };

@@ -1,0 +1,14 @@
+name: architecture-design
+description: "Cria proposta de arquitetura com ADRs a partir da análise do codebase"
+outputDir: .fama/workflow-output/architecture
+
+steps:
+  - name: analyze
+    description: "Análise completa do codebase atual"
+    agent: architect
+  - name: design
+    description: "Proposta de arquitetura e trade-offs"
+    agent: architect
+  - name: document
+    description: "Documentação com ADRs e diagramas"
+    agent: documentation-writer

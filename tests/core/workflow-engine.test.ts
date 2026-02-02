@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, afterAll } from "vitest";
 import { resolve } from "node:path";
 import { mkdirSync, rmSync, existsSync } from "node:fs";
 import { WorkflowEngine } from "../../src/core/workflow-engine.js";
@@ -16,7 +16,11 @@ describe("WorkflowEngine", () => {
   });
 
   afterEach(() => {
-    if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true });
+    if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true, force: true, maxRetries: 3 });
+  });
+
+  afterAll(() => {
+    if (existsSync(BASE_TEST_DIR)) rmSync(BASE_TEST_DIR, { recursive: true, force: true, maxRetries: 3 });
   });
 
   it("should initialize a workflow", () => {

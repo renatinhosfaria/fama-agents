@@ -1,11 +1,18 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { resolve, basename } from "node:path";
+import { resolve, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
 import { extractFrontmatter, type AgentFrontmatter } from "../utils/frontmatter.js";
-import type { AgentConfig, AgentFactory, WorkflowPhase } from "./types.js";
+import type { AgentConfig, AgentFactory, AgentMemory, WorkflowPhase } from "./types.js";
 import type { AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
 import { agentFactories } from "../agents/index.js";
+import { buildAgentPrompt } from "../agents/build-prompt.js";
+import { log } from "../utils/logger.js";
+import {
+  normalizeOptionalModel,
+  normalizeOptionalPhases,
+  normalizeOptionalString,
+  normalizeOptionalStringArray,
+} from "../utils/validation.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,6 +25,17 @@ function getBuiltInAgentsDir(): string {
 }
 
 /**
+ * Gets the project agents directory (<project>/agents).
+ */
+function getProjectAgentsDir(projectDir: string): string {
+  return resolve(projectDir, "agents");
+}
+
+function pathsEqual(pathA: string, pathB: string): boolean {
+  return resolve(pathA).toLowerCase() === resolve(pathB).toLowerCase();
+}
+
+/**
  * Loads agent playbook from a markdown file.
  */
 function loadAgentPlaybook(filePath: string): AgentConfig | null {
@@ -25,19 +43,35 @@ function loadAgentPlaybook(filePath: string): AgentConfig | null {
     const raw = readFileSync(filePath, "utf-8");
     const { frontmatter, body } = extractFrontmatter<AgentFrontmatter>(raw);
     const slug = basename(filePath, ".md");
+    const context = `Agent "${slug}" (${filePath})`;
+    const name = normalizeOptionalString(frontmatter.name, "name", context) ?? slug;
+    const description =
+      normalizeOptionalString(frontmatter.description, "description", context) ?? "";
+    const tools =
+      normalizeOptionalStringArray(frontmatter.tools, "tools", context) ??
+      ["Read", "Grep", "Glob"];
+    const phases = normalizeOptionalPhases(frontmatter.phases, context) ?? [];
+    const defaultSkills =
+      normalizeOptionalStringArray(frontmatter.skills, "skills", context) ?? [];
+    const model = normalizeOptionalModel(frontmatter.model, context) ?? "sonnet";
 
     return {
       slug,
-      name: (frontmatter.name as string) || slug,
-      description: (frontmatter.description as string) || "",
+      name,
+      description,
       prompt: body,
-      tools: (frontmatter.tools as string[]) || ["Read", "Grep", "Glob"],
-      model: ((frontmatter.model as string) || "sonnet") as AgentConfig["model"],
-      phases: (frontmatter.phases as WorkflowPhase[]) || [],
-      defaultSkills: (frontmatter.skills as string[]) || [],
+      tools,
+      model,
+      phases,
+      defaultSkills,
       filePath,
+      persona: frontmatter.persona,
+      criticalActions: frontmatter.critical_actions,
+      menu: frontmatter.menu,
+      hasSidecar: frontmatter.hasSidecar ?? false,
     };
-  } catch {
+  } catch (err) {
+    log.warn(`Failed to load agent playbook "${filePath}": ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 }
@@ -67,23 +101,37 @@ export class AgentRegistry {
   refresh(): void {
     this.agents.clear();
 
+    const mergeFactory = (config: AgentConfig) => {
+      const factory = this.factories.get(config.slug);
+      if (factory) {
+        config.tools = factory.tools;
+        config.model = factory.model;
+        config.phases = factory.phases;
+        config.defaultSkills = factory.defaultSkills;
+      }
+      this.agents.set(config.slug, config);
+    };
+
     // Load built-in playbooks
     const builtInDir = getBuiltInAgentsDir();
     if (existsSync(builtInDir)) {
       for (const file of readdirSync(builtInDir)) {
         if (!file.endsWith(".md")) continue;
         const config = loadAgentPlaybook(resolve(builtInDir, file));
-        if (config) {
-          // Merge with factory if exists
-          const factory = this.factories.get(config.slug);
-          if (factory) {
-            config.tools = factory.tools;
-            config.model = factory.model;
-            config.phases = factory.phases;
-            config.defaultSkills = factory.defaultSkills;
-          }
-          this.agents.set(config.slug, config);
-        }
+        if (config) mergeFactory(config);
+      }
+    }
+
+    // Load project playbooks (shadow built-in)
+    const projectAgentsDir = getProjectAgentsDir(this.projectDir);
+    if (
+      existsSync(projectAgentsDir) &&
+      !pathsEqual(projectAgentsDir, builtInDir)
+    ) {
+      for (const file of readdirSync(projectAgentsDir)) {
+        if (!file.endsWith(".md")) continue;
+        const config = loadAgentPlaybook(resolve(projectAgentsDir, file));
+        if (config) mergeFactory(config);
       }
     }
 
@@ -93,7 +141,7 @@ export class AgentRegistry {
         this.agents.set(slug, {
           slug,
           name: slug,
-          description: factory.slug,
+          description: factory.description,
           prompt: "",
           tools: factory.tools,
           model: factory.model,
@@ -127,24 +175,28 @@ export class AgentRegistry {
   buildDefinition(
     slug: string,
     skillContents: string[],
+    memory?: AgentMemory,
   ): AgentDefinition | null {
     const config = this.getBySlug(slug);
     if (!config) return null;
 
+    const promptOpts = {
+      playbookContent: config.prompt,
+      skillContents,
+      persona: config.persona,
+      criticalActions: config.criticalActions,
+      memory,
+    };
+
     const factory = this.factories.get(slug);
     if (factory) {
-      return factory.build(config.prompt, skillContents);
+      return factory.build(promptOpts);
     }
 
-    // Fallback: compose prompt manually
-    const parts = [config.prompt];
-    for (const skill of skillContents) {
-      parts.push(`\n---\n## Active Skill\n${skill}`);
-    }
-
+    // Fallback: compose prompt manually using buildAgentPrompt
     return {
       description: config.description,
-      prompt: parts.join("\n"),
+      prompt: buildAgentPrompt(promptOpts),
       tools: config.tools,
       model: config.model === "inherit" ? undefined : config.model,
     };

@@ -1,4 +1,5 @@
 import { ProjectScale, type WorkflowPhase } from "../core/types.js";
+import { log } from "../utils/logger.js";
 
 /**
  * Returns the active phases for a given project scale.
@@ -54,6 +55,7 @@ export function parseScale(value: string): ProjectScale {
     case "GRANDE":
       return ProjectScale.LARGE;
     default:
+      log.warn(`Unknown scale "${value}", defaulting to MEDIUM`);
       return ProjectScale.MEDIUM;
   }
 }

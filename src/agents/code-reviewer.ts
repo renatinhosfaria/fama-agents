@@ -1,25 +1,21 @@
-import type { AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
-import type { AgentFactory } from "../core/types.js";
+import type { AgentFactory, BuildPromptOptions } from "../core/types.js";
+import { buildAgentPrompt } from "./build-prompt.js";
 
 export const codeReviewerFactory: AgentFactory = {
   slug: "code-reviewer",
+  description:
+    "Expert code reviewer for quality, security, and maintainability reviews. Use when code needs review against plan and standards.",
   phases: ["R", "V"],
   defaultSkills: ["code-review", "verification"],
   tools: ["Read", "Grep", "Glob"],
-  model: "sonnet",
+  model: "inherit",
 
-  build(playbookContent: string, skillContents: string[]): AgentDefinition {
-    const parts = [playbookContent];
-    for (const skill of skillContents) {
-      parts.push(`\n---\n## Active Skill\n${skill}`);
-    }
-
+  build(opts: BuildPromptOptions) {
     return {
-      description:
-        "Expert code reviewer for quality, security, and maintainability reviews. Use when code needs review against plan and standards.",
-      prompt: parts.join("\n"),
-      tools: ["Read", "Grep", "Glob"],
-      model: "sonnet",
+      description: this.description,
+      prompt: buildAgentPrompt(opts),
+      tools: this.tools,
+      model: this.model === "inherit" ? undefined : this.model,
     };
   },
 };

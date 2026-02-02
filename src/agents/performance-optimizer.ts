@@ -1,25 +1,21 @@
-import type { AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
-import type { AgentFactory } from "../core/types.js";
+import type { AgentFactory, BuildPromptOptions } from "../core/types.js";
+import { buildAgentPrompt } from "./build-prompt.js";
 
 export const performanceOptimizerFactory: AgentFactory = {
   slug: "performance-optimizer",
+  description:
+    "Performance optimization specialist. Use when profiling and optimizing code performance.",
   phases: ["V"],
   defaultSkills: ["verification"],
   tools: ["Read", "Grep", "Glob", "Edit", "Write", "Bash"],
   model: "sonnet",
 
-  build(playbookContent: string, skillContents: string[]): AgentDefinition {
-    const parts = [playbookContent];
-    for (const skill of skillContents) {
-      parts.push(`\n---\n## Active Skill\n${skill}`);
-    }
-
+  build(opts: BuildPromptOptions) {
     return {
-      description:
-        "Performance optimization specialist. Use when profiling and optimizing code performance.",
-      prompt: parts.join("\n"),
-      tools: ["Read", "Grep", "Glob", "Edit", "Write", "Bash"],
-      model: "sonnet",
+      description: this.description,
+      prompt: buildAgentPrompt(opts),
+      tools: this.tools,
+      model: this.model === "inherit" ? undefined : this.model,
     };
   },
 };

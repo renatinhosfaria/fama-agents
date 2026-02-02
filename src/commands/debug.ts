@@ -13,7 +13,7 @@ interface DebugOptions {
 export async function debugCommand(description: string, opts: DebugOptions) {
   const cwd = opts.cwd ?? process.cwd();
   const config = loadConfig(cwd);
-  const skillRegistry = new SkillRegistry(cwd);
+  const skillRegistry = new SkillRegistry(cwd, config.skillsDir);
   const agentRegistry = new AgentRegistry(cwd);
 
   log.heading("Systematic debugging session");

@@ -1,0 +1,17 @@
+name: prd-generation
+description: "Gera um Product Requirements Document (PRD) completo em 4 etapas"
+outputDir: .fama/workflow-output/prd
+
+steps:
+  - name: discovery
+    description: "Levantamento de requisitos e contexto do produto"
+    agent: architect
+  - name: requirements
+    description: "Definição de requisitos funcionais e não-funcionais"
+    agent: architect
+  - name: acceptance
+    description: "Critérios de aceite e cenários de teste"
+    agent: architect
+  - name: assembly
+    description: "Montagem do PRD final consolidado"
+    agent: documentation-writer

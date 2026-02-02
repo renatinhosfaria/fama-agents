@@ -1,8 +1,13 @@
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { resolve, basename, dirname } from "node:path";
+import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractFrontmatter, type SkillFrontmatter } from "../utils/frontmatter.js";
-import type { ParsedSkill, WorkflowPhase } from "./types.js";
+import type { ParsedSkill } from "./types.js";
+import { log } from "../utils/logger.js";
+import {
+  normalizeOptionalPhases,
+  normalizeOptionalString,
+} from "../utils/validation.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -51,17 +56,23 @@ function loadSkillFile(
   try {
     const raw = readFileSync(filePath, "utf-8");
     const { frontmatter, body } = extractFrontmatter<SkillFrontmatter>(raw);
+    const context = `Skill "${slug}" (${filePath})`;
+    const name = normalizeOptionalString(frontmatter.name, "name", context) ?? slug;
+    const description =
+      normalizeOptionalString(frontmatter.description, "description", context) ?? "";
+    const phases = normalizeOptionalPhases(frontmatter.phases, context) ?? [];
 
     return {
       slug,
-      name: (frontmatter.name as string) || slug,
-      description: (frontmatter.description as string) || "",
+      name,
+      description,
       content: body,
-      phases: (frontmatter.phases as WorkflowPhase[]) || [],
+      phases,
       source,
       filePath,
     };
-  } catch {
+  } catch (err) {
+    log.warn(`Failed to load skill "${slug}" from ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 }
@@ -70,9 +81,12 @@ function loadSkillFile(
  * Discovers all skills from built-in and project directories.
  * Project skills shadow built-in skills with the same slug.
  */
-export function discoverAllSkills(projectDir: string): ParsedSkill[] {
+export function discoverAllSkills(
+  projectDir: string,
+  skillsDir?: string,
+): ParsedSkill[] {
   const builtInDir = getBuiltInSkillsDir();
-  const projectSkillsDir = resolve(projectDir, "skills");
+  const projectSkillsDir = resolve(projectDir, skillsDir ?? "skills");
 
   const builtIn = discoverSkillsInDir(builtInDir, "built-in");
   const project = discoverSkillsInDir(projectSkillsDir, "project");
@@ -95,9 +109,16 @@ export function discoverAllSkills(projectDir: string): ParsedSkill[] {
 export function loadSkill(
   slug: string,
   projectDir: string,
+  skillsDir?: string,
 ): ParsedSkill | null {
+  // Validate slug to prevent path traversal
+  if (!/^[a-z0-9][a-z0-9-]*$/i.test(slug)) {
+    log.warn(`Invalid skill slug: "${slug}"`);
+    return null;
+  }
+
   // Check project first (shadow)
-  const projectPath = resolve(projectDir, "skills", slug, "SKILL.md");
+  const projectPath = resolve(projectDir, skillsDir ?? "skills", slug, "SKILL.md");
   if (existsSync(projectPath)) {
     return loadSkillFile(projectPath, slug, "project");
   }

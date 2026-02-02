@@ -47,5 +47,14 @@ describe("skill-loader", () => {
       const skill = loadSkill("non-existent-skill", PROJECT_DIR);
       expect(skill).toBeNull();
     });
+
+    it("should load the adversarial-review skill", () => {
+      const skill = loadSkill("adversarial-review", PROJECT_DIR);
+      expect(skill).toBeDefined();
+      expect(skill?.slug).toBe("adversarial-review");
+      expect(skill?.phases).toContain("R");
+      expect(skill?.phases).toContain("V");
+      expect(skill?.content).toContain("Lei de Ferro");
+    });
   });
 });

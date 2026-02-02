@@ -1,0 +1,15 @@
+name: test-workflow
+description: Workflow de teste com 3 steps
+outputDir: .fama/test-output
+steps:
+  - name: Análise
+    description: Analisar requisitos
+    agent: architect
+  - name: Implementação
+    description: Implementar solução
+    agent: feature-developer
+    skills:
+      - test-driven-development
+  - name: Revisão
+    description: Revisar implementação
+    agent: code-reviewer

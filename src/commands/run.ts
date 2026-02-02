@@ -11,13 +11,14 @@ interface RunOptions {
   model?: string;
   maxTurns?: string;
   verbose?: boolean;
+  dryRun?: boolean;
   cwd?: string;
 }
 
 export async function runCommand(task: string, opts: RunOptions) {
   const cwd = opts.cwd ?? process.cwd();
   const config = loadConfig(cwd);
-  const skillRegistry = new SkillRegistry(cwd);
+  const skillRegistry = new SkillRegistry(cwd, config.skillsDir);
   const agentRegistry = new AgentRegistry(cwd);
 
   // Auto-select agent if not specified
@@ -36,6 +37,8 @@ export async function runCommand(task: string, opts: RunOptions) {
   log.heading(`Running agent: ${agentSlug}`);
 
   const extraSkills = opts.skills?.split(",").map((s) => s.trim()) ?? [];
+  const parsedTurns = opts.maxTurns ? parseInt(opts.maxTurns, 10) : NaN;
+  const maxTurns = !Number.isNaN(parsedTurns) ? parsedTurns : config.maxTurns;
 
   try {
     const result = await runAgent(
@@ -44,8 +47,9 @@ export async function runCommand(task: string, opts: RunOptions) {
         agent: agentSlug,
         skills: extraSkills,
         model: opts.model ?? config.model,
-        maxTurns: opts.maxTurns ? parseInt(opts.maxTurns, 10) : config.maxTurns,
+        maxTurns,
         verbose: opts.verbose ?? false,
+        dryRun: opts.dryRun ?? false,
         cwd,
       },
       agentRegistry,

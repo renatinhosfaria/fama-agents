@@ -1,4 +1,5 @@
 import { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpTools } from "./tools.js";
 import { log } from "../utils/logger.js";
 
@@ -7,13 +8,22 @@ export async function startMcpServer() {
 
   const tools = createMcpTools();
 
-  const server = createSdkMcpServer({
+  const serverConfig = createSdkMcpServer({
     name: "fama-agents",
     version: "0.1.0",
     tools,
   });
 
-  log.success("MCP server started. Listening for connections...");
+  const transport = new StdioServerTransport();
+  await serverConfig.instance.connect(transport);
 
-  return server;
+  log.info("MCP server connected via stdio.");
+
+  // Clean shutdown on SIGINT
+  process.on("SIGINT", async () => {
+    await serverConfig.instance.close();
+    process.exit(0);
+  });
+
+  return serverConfig;
 }

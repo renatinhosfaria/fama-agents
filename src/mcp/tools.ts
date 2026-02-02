@@ -4,13 +4,22 @@ import { SkillRegistry } from "../core/skill-registry.js";
 import { AgentRegistry } from "../core/agent-registry.js";
 import { WorkflowEngine } from "../core/workflow-engine.js";
 import { parseScale } from "../workflow/scaling.js";
+import { loadConfig } from "../utils/config.js";
 
 const cwd = process.cwd();
 
+function mcpError(message: string) {
+  return {
+    content: [{ type: "text" as const, text: message }],
+    isError: true,
+  };
+}
+
 export function createMcpTools() {
-  const skillRegistry = new SkillRegistry(cwd);
+  const config = loadConfig(cwd);
+  const skillRegistry = new SkillRegistry(cwd, config.skillsDir);
   const agentRegistry = new AgentRegistry(cwd);
-  const workflowEngine = new WorkflowEngine(cwd);
+  const workflowEngine = new WorkflowEngine(cwd, { gates: config.workflow.gates });
 
   return [
     tool(
@@ -18,11 +27,15 @@ export function createMcpTools() {
       "List all available coding agents with descriptions",
       {},
       async () => {
-        const agents = agentRegistry.getAll();
-        const text = agents
-          .map((a) => `${a.slug}: ${a.description} (phases: ${a.phases.join(",")})`  )
-          .join("\n");
-        return { content: [{ type: "text" as const, text }] };
+        try {
+          const agents = agentRegistry.getAll();
+          const text = agents
+            .map((a) => `${a.slug}: ${a.description} (phases: ${a.phases.join(",")})`)
+            .join("\n");
+          return { content: [{ type: "text" as const, text }] };
+        } catch (err) {
+          return mcpError(`Error listing agents: ${err instanceof Error ? err.message : String(err)}`);
+        }
       },
     ),
 
@@ -31,11 +44,15 @@ export function createMcpTools() {
       "List all available coding skills",
       {},
       async () => {
-        const skills = skillRegistry.getAll();
-        const text = skills
-          .map((s) => `${s.slug}: ${s.description} (phases: ${s.phases.join(",")})`)
-          .join("\n");
-        return { content: [{ type: "text" as const, text }] };
+        try {
+          const skills = skillRegistry.getAll();
+          const text = skills
+            .map((s) => `${s.slug}: ${s.description} (phases: ${s.phases.join(",")})`)
+            .join("\n");
+          return { content: [{ type: "text" as const, text }] };
+        } catch (err) {
+          return mcpError(`Error listing skills: ${err instanceof Error ? err.message : String(err)}`);
+        }
       },
     ),
 
@@ -44,14 +61,15 @@ export function createMcpTools() {
       "Get the full content of a specific skill",
       { slug: z.string().describe("The skill slug to retrieve") },
       async ({ slug }) => {
-        const content = skillRegistry.getContent(slug);
-        if (!content) {
-          return {
-            content: [{ type: "text" as const, text: `Skill "${slug}" not found.` }],
-            isError: true,
-          };
+        try {
+          const content = skillRegistry.getContent(slug);
+          if (!content) {
+            return mcpError(`Skill "${slug}" not found.`);
+          }
+          return { content: [{ type: "text" as const, text: content }] };
+        } catch (err) {
+          return mcpError(`Error loading skill: ${err instanceof Error ? err.message : String(err)}`);
         }
-        return { content: [{ type: "text" as const, text: content }] };
       },
     ),
 
@@ -63,11 +81,15 @@ export function createMcpTools() {
         scale: z.string().optional().describe("Scale: quick, small, medium, large"),
       },
       async ({ name, scale }) => {
-        const s = parseScale(scale ?? "medium");
-        const state = workflowEngine.init(name, s);
-        return {
-          content: [{ type: "text" as const, text: workflowEngine.getSummary() }],
-        };
+        try {
+          const s = scale ? parseScale(scale) : config.workflow.defaultScale;
+          workflowEngine.init(name, s);
+          return {
+            content: [{ type: "text" as const, text: workflowEngine.getSummary() }],
+          };
+        } catch (err) {
+          return mcpError(`Error initializing workflow: ${err instanceof Error ? err.message : String(err)}`);
+        }
       },
     ),
 
@@ -76,8 +98,12 @@ export function createMcpTools() {
       "Get the current workflow status",
       {},
       async () => {
-        const summary = workflowEngine.getSummary();
-        return { content: [{ type: "text" as const, text: summary }] };
+        try {
+          const summary = workflowEngine.getSummary();
+          return { content: [{ type: "text" as const, text: summary }] };
+        } catch (err) {
+          return mcpError(`Error getting status: ${err instanceof Error ? err.message : String(err)}`);
+        }
       },
     ),
 
@@ -87,19 +113,11 @@ export function createMcpTools() {
       {},
       async () => {
         try {
-          const result = workflowEngine.advance();
+          workflowEngine.advance();
           const summary = workflowEngine.getSummary();
           return { content: [{ type: "text" as const, text: summary }] };
         } catch (err) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Gate check failed: ${err instanceof Error ? err.message : String(err)}`,
-              },
-            ],
-            isError: true,
-          };
+          return mcpError(`Error advancing workflow: ${err instanceof Error ? err.message : String(err)}`);
         }
       },
     ),

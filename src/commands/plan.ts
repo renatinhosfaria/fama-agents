@@ -14,7 +14,7 @@ interface PlanOptions {
 export async function planCommand(description: string, opts: PlanOptions) {
   const cwd = opts.cwd ?? process.cwd();
   const config = loadConfig(cwd);
-  const skillRegistry = new SkillRegistry(cwd);
+  const skillRegistry = new SkillRegistry(cwd, config.skillsDir);
   const agentRegistry = new AgentRegistry(cwd);
 
   if (opts.execute) {

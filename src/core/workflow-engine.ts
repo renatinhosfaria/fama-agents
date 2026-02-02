@@ -1,4 +1,9 @@
-import { ProjectScale, type WorkflowPhase, type WorkflowState } from "./types.js";
+import {
+  ProjectScale,
+  type WorkflowPhase,
+  type WorkflowState,
+  type WorkflowGatesConfig,
+} from "./types.js";
 import { WorkflowOrchestrator } from "../workflow/orchestrator.js";
 import { PHASE_DEFINITIONS } from "../workflow/phases.js";
 import { getPhasesForScale, scaleLabel } from "../workflow/scaling.js";
@@ -11,9 +16,9 @@ export class WorkflowEngine {
   private orchestrator: WorkflowOrchestrator;
   private projectDir: string;
 
-  constructor(projectDir: string) {
+  constructor(projectDir: string, options?: { gates?: WorkflowGatesConfig }) {
     this.projectDir = projectDir;
-    this.orchestrator = new WorkflowOrchestrator(projectDir);
+    this.orchestrator = new WorkflowOrchestrator(projectDir, options?.gates);
   }
 
   /** Check if a workflow exists. */
@@ -39,6 +44,11 @@ export class WorkflowEngine {
   /** Complete current phase. */
   completeCurrent(): WorkflowState | null {
     return this.orchestrator.completeCurrentPhase();
+  }
+
+  /** Append an output reference to a phase. */
+  appendOutput(phase: WorkflowPhase, output: string): WorkflowState | null {
+    return this.orchestrator.appendOutput(phase, output);
   }
 
   /** Get recommended agents. */

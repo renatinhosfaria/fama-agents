@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../BMAD-METHOD"
+		},
+		{
+			"path": "../ai-coders-context"
+		},
+		{
+			"path": "../superpowers"
+		}
+	],
+	"settings": {}
+}
