@@ -1,0 +1,49 @@
+name: test
+scale: 1
+currentPhase: V
+phases:
+  P:
+    status: completed
+    startedAt: 2026-02-02T00:13:16.510Z
+    completedAt: 2026-02-02T00:13:16.521Z
+  R:
+    status: skipped
+  E:
+    status: completed
+    startedAt: 2026-02-02T00:13:16.521Z
+    completedAt: 2026-02-02T00:13:16.527Z
+  V:
+    status: completed
+    startedAt: 2026-02-02T00:13:16.527Z
+    completedAt: 2026-02-02T00:13:16.532Z
+  C:
+    status: skipped
+history:
+  - timestamp: 2026-02-02T00:13:16.510Z
+    phase: P
+    action: started
+  - timestamp: 2026-02-02T00:13:16.519Z
+    phase: P
+    action: completed
+  - timestamp: 2026-02-02T00:13:16.521Z
+    phase: P
+    action: completed
+  - timestamp: 2026-02-02T00:13:16.521Z
+    phase: E
+    action: started
+  - timestamp: 2026-02-02T00:13:16.524Z
+    phase: E
+    action: completed
+  - timestamp: 2026-02-02T00:13:16.527Z
+    phase: E
+    action: completed
+  - timestamp: 2026-02-02T00:13:16.527Z
+    phase: V
+    action: started
+  - timestamp: 2026-02-02T00:13:16.530Z
+    phase: V
+    action: completed
+  - timestamp: 2026-02-02T00:13:16.532Z
+    phase: V
+    action: completed
+startedAt: 2026-02-02T00:13:16.510Z

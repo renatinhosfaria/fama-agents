@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(ls -la \"d:\\\\Usuários\\\\Windows 11\\\\Área de Trabalho\\\\VSCODE\\\\fama-agents\\\\ai-coders-context\\\\src\\\\services\"\" | grep -E \"^d \")",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "WebFetch(domain:docs.claude.com)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest run)",
+      "Bash(node --import tsx bin/fama.ts:*)",
+      "Bash(npm test)",
+      "Bash(node:*)",
+      "Bash(npm --version:*)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}

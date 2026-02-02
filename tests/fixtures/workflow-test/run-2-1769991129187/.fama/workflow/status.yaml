@@ -1,0 +1,20 @@
+name: test
+scale: 1
+currentPhase: P
+phases:
+  P:
+    status: in_progress
+    startedAt: 2026-02-02T00:12:09.188Z
+  R:
+    status: skipped
+  E:
+    status: pending
+  V:
+    status: pending
+  C:
+    status: skipped
+history:
+  - timestamp: 2026-02-02T00:12:09.188Z
+    phase: P
+    action: started
+startedAt: 2026-02-02T00:12:09.188Z

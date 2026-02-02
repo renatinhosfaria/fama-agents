@@ -1,0 +1,31 @@
+name: quick-fix
+scale: 0
+currentPhase: V
+phases:
+  P:
+    status: skipped
+  R:
+    status: skipped
+  E:
+    status: completed
+    startedAt: 2026-02-02T00:16:40.660Z
+    completedAt: 2026-02-02T00:16:40.664Z
+  V:
+    status: in_progress
+    startedAt: 2026-02-02T00:16:40.664Z
+  C:
+    status: skipped
+history:
+  - timestamp: 2026-02-02T00:16:40.660Z
+    phase: E
+    action: started
+  - timestamp: 2026-02-02T00:16:40.662Z
+    phase: E
+    action: completed
+  - timestamp: 2026-02-02T00:16:40.664Z
+    phase: E
+    action: completed
+  - timestamp: 2026-02-02T00:16:40.664Z
+    phase: V
+    action: started
+startedAt: 2026-02-02T00:16:40.660Z
