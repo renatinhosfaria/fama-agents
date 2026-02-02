@@ -80,6 +80,17 @@ After each batch (or when stopped), provide:
 | Commit granularity | Per task | Per task (non-negotiable) |
 | TodoWrite tracking | Required | Required (non-negotiable) |
 
+## Checklist
+
+- [ ] Plan loaded from docs/plans/ into TodoWrite
+- [ ] Plan reviewed for stale file paths and dependencies
+- [ ] Tasks executed in batches of 3
+- [ ] Verification suite run after each batch
+- [ ] Each task follows TDD cycle (test first, then implement)
+- [ ] Each task committed individually
+- [ ] Blockers reported immediately (no silent skipping)
+- [ ] Progress report generated after each batch
+
 ## Rationalization Table
 
 | Excuse | Reality |

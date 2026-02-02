@@ -1,0 +1,14 @@
+name: retrospective
+description: "Retrospectiva: coleta de dados, analise de padroes e acoes de melhoria"
+outputDir: .fama/workflow-output/retrospective
+
+steps:
+  - name: collect
+    description: "Coleta de dados e feedback sobre o ciclo"
+    agent: architect
+  - name: analyze
+    description: "Analise de padroes e tendencias"
+    agent: architect
+  - name: actions
+    description: "Definicao de acoes de melhoria"
+    agent: documentation-writer

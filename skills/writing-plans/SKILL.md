@@ -103,6 +103,17 @@ Include a header with:
 | Commit message | Conventional commit format |
 | Independence | Each task can be committed alone |
 
+## Checklist
+
+- [ ] Design document or requirements loaded as input
+- [ ] Every task is atomic and completable in 2-5 minutes
+- [ ] File paths verified against the actual codebase
+- [ ] Every task has a failing test step
+- [ ] Code snippets are complete and copy-pasteable
+- [ ] Tasks are in dependency order
+- [ ] Commit messages follow conventional commit format
+- [ ] Plan written to docs/plans/
+
 ## Rationalization Table
 
 | Excuse | Reality |

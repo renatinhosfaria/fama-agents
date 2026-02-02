@@ -40,6 +40,15 @@ Include actual command outputs in your completion report. Not "tests pass" but "
 | "Feature works" | Actual execution output |
 | "Bug is fixed" | Failing test now passes |
 
+## Checklist
+
+- [ ] All verification commands identified (build, test, lint, typecheck)
+- [ ] Each command executed and output captured
+- [ ] All commands exit with success (zero errors)
+- [ ] Failures fixed and re-verified before proceeding
+- [ ] Completion report includes actual command outputs
+- [ ] No claim made without supporting evidence
+
 ## Rationalization Table
 
 | Excuse | Reality |

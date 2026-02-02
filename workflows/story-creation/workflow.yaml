@@ -1,0 +1,14 @@
+name: story-creation
+description: "Criacao de user stories com criterios de aceite e tarefas tecnicas"
+outputDir: .fama/workflow-output/story-creation
+
+steps:
+  - name: stories
+    description: "Escrita de user stories a partir dos epics"
+    agent: architect
+  - name: acceptance
+    description: "Definicao de criterios de aceite e cenarios"
+    agent: architect
+  - name: tasks
+    description: "Decomposicao em tarefas tecnicas"
+    agent: documentation-writer

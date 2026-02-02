@@ -3,6 +3,7 @@ import { runCommand } from "./commands/run.js";
 import { planCommand } from "./commands/plan.js";
 import { reviewCommand } from "./commands/review.js";
 import { debugCommand } from "./commands/debug.js";
+import { quickCommand } from "./commands/quick.js";
 import { initCommand } from "./commands/init.js";
 import { completionsCommand } from "./commands/completions.js";
 
@@ -29,6 +30,17 @@ export function createCli() {
     .option("--trigger <trigger>", "Execute a menu trigger from the agent")
     .option("--cwd <path>", "Working directory")
     .action(runCommand);
+
+  // fama quick <task>
+  program
+    .command("quick")
+    .description("Run a quick task (QUICK/SMALL scale, minimal ceremony)")
+    .argument("<task>", "Task description")
+    .option("--agent <slug>", "Agent to use")
+    .option("--model <model>", "Model to use")
+    .option("--verbose", "Show agent tool calls")
+    .option("--cwd <path>", "Working directory")
+    .action(quickCommand);
 
   // fama plan <description>
   program

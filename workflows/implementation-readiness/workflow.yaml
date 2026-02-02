@@ -1,0 +1,14 @@
+name: implementation-readiness
+description: "Valida alinhamento entre PRD, arquitetura e stories antes da execucao"
+outputDir: .fama/workflow-output/implementation-readiness
+
+steps:
+  - name: gather-artifacts
+    description: "Coleta e leitura de todos os artefatos de planejamento"
+    agent: architect
+  - name: cross-validate
+    description: "Validacao cruzada entre PRD, arquitetura e stories"
+    agent: code-reviewer
+  - name: readiness-report
+    description: "Relatorio de prontidao para implementacao"
+    agent: architect

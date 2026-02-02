@@ -125,6 +125,16 @@ docs/plans/YYYY-MM-DD-<feature-name>-breakdown.md
 | Estimate Complexity | Time estimate per task |
 | Output | Numbered task list with acceptance criteria |
 
+## Checklist
+
+- [ ] All affected layers identified (data, API, service, UI, infra, tests)
+- [ ] Boundaries defined for each component (input/output/contract)
+- [ ] Dependency graph created with no circular dependencies
+- [ ] Tasks ordered by dependencies
+- [ ] Every task rated for complexity (no Complex tasks remaining)
+- [ ] Acceptance criteria written for every task
+- [ ] Output written to docs/plans/
+
 ## Rationalization Table
 
 | Excuse | Reality |

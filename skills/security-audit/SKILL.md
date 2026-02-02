@@ -118,6 +118,17 @@ pnpm outdated
 | A09 Logging Failures | No PII in logs, audit trail for sensitive operations |
 | A10 SSRF | Validate URLs, block internal IPs, allowlist domains |
 
+## Checklist
+
+- [ ] Attack surface mapped (all entry points identified)
+- [ ] Injection audit completed (SQL, command, XSS, NoSQL, template)
+- [ ] Authentication and session audit completed
+- [ ] Authorization audit completed (every endpoint checked)
+- [ ] Sensitive data exposure audit completed
+- [ ] Dependency audit run (pnpm audit)
+- [ ] Findings categorized by severity
+- [ ] Report generated in structured format
+
 ## Rationalization Table
 
 | Excuse | Reality |

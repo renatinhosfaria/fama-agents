@@ -55,7 +55,7 @@ Para cada finding:
 | "Já tem testes" | Testes existentes podem não cobrir o novo comportamento. |
 | "Não encontrei nada" | Você não olhou com atenção suficiente. Tente novamente. |
 
-## Checklist de Validação
+## Checklist
 
 Antes de entregar o relatório, verifique:
 - [ ] Pelo menos 1 finding foi documentado

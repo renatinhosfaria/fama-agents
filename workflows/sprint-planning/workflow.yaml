@@ -1,0 +1,14 @@
+name: sprint-planning
+description: "Planejamento de sprint: backlog, capacidade e comprometimento"
+outputDir: .fama/workflow-output/sprint-planning
+
+steps:
+  - name: backlog
+    description: "Priorizacao e refinamento do backlog"
+    agent: architect
+  - name: capacity
+    description: "Analise de capacidade e velocidade do time"
+    agent: architect
+  - name: commitment
+    description: "Definicao do comprometimento do sprint"
+    agent: architect

@@ -102,6 +102,17 @@ pnpm turbo test && pnpm turbo lint && pnpm turbo typecheck
 Tests green → Identify smell → One small change → Tests green → Commit → Repeat
 ```
 
+## Checklist
+
+- [ ] Full test suite passes before starting
+- [ ] Specific code smell identified and named
+- [ ] Each refactoring step is a single change
+- [ ] Tests run after every step
+- [ ] Failed steps undone immediately
+- [ ] Each successful step committed
+- [ ] Full test suite passes after completion
+- [ ] Diff contains only structural changes (no behavior changes)
+
 ## Rationalization Table
 
 | Excuse | Reality |

@@ -33,6 +33,16 @@ phases: [E, V]
 Write test → Run (FAIL) → Write code → Run (PASS) → Refactor → Run (PASS) → Commit
 ```
 
+## Checklist
+
+- [ ] Failing test written before any implementation code
+- [ ] Test actually fails on first run (not a false positive)
+- [ ] Minimum code written to make test pass
+- [ ] Test passes after implementation
+- [ ] Refactoring done only while tests are green
+- [ ] Tests re-run after every refactoring step
+- [ ] Commit made after each complete Red-Green-Refactor cycle
+
 ## Rationalization Table
 
 | Excuse | Reality |

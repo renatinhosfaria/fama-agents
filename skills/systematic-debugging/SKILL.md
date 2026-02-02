@@ -78,6 +78,17 @@ phases: [E, V]
 | Hypothesis | Scientific method | Confirmed root cause |
 | Implementation | Test-first fix | Passing test + minimal fix |
 
+## Checklist
+
+- [ ] Bug reproduced with exact error/behavior documented
+- [ ] Evidence log filled (error, location, input, expected, actual)
+- [ ] Similar working code found for comparison
+- [ ] Recent changes checked (git log/diff)
+- [ ] Hypothesis formed with evidence and prediction
+- [ ] Hypothesis tested and confirmed/rejected
+- [ ] Failing test written that reproduces the bug
+- [ ] Minimal fix implemented and all tests pass
+
 ## Rationalization Table
 
 | Excuse | Reality |

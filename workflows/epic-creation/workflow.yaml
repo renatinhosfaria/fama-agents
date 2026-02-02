@@ -1,0 +1,14 @@
+name: epic-creation
+description: "Decomposicao de feature em epics com dependencias"
+outputDir: .fama/workflow-output/epic-creation
+
+steps:
+  - name: decompose
+    description: "Decomposicao da feature em epics coesos"
+    agent: architect
+  - name: dependencies
+    description: "Mapeamento de dependencias entre epics"
+    agent: architect
+  - name: document
+    description: "Documentacao final dos epics"
+    agent: documentation-writer

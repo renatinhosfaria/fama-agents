@@ -1,0 +1,14 @@
+name: product-brief
+description: "Gera um Product Brief conciso: contexto, visao e escopo"
+outputDir: .fama/workflow-output/product-brief
+
+steps:
+  - name: context
+    description: "Levantamento de contexto e problema a resolver"
+    agent: architect
+  - name: vision
+    description: "Definicao de visao do produto e proposta de valor"
+    agent: architect
+  - name: scope
+    description: "Delimitacao de escopo e entregaveis"
+    agent: documentation-writer

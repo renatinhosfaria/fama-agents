@@ -1,0 +1,14 @@
+name: ux-design
+description: "Design de UX: pesquisa de usuarios, wireframes e validacao"
+outputDir: .fama/workflow-output/ux-design
+
+steps:
+  - name: research
+    description: "Pesquisa de usuarios e analise de jornada"
+    agent: architect
+  - name: wireframes
+    description: "Criacao de wireframes e fluxos de navegacao"
+    agent: architect
+  - name: validation
+    description: "Validacao de usabilidade e acessibilidade"
+    agent: architect

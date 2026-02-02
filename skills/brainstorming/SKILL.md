@@ -77,6 +77,15 @@ The document must include:
 | Design | Section-by-section validation | Approved design |
 | Document | Write to docs/plans/ | Design document file |
 
+## Checklist
+
+- [ ] Clarifying questions asked (3-5 max)
+- [ ] At least 2-3 genuinely viable approaches presented
+- [ ] Each approach has pros, cons, and complexity rating
+- [ ] One approach selected with explicit rationale
+- [ ] Design presented section-by-section with validation
+- [ ] Final design document written to docs/plans/
+
 ## Rationalization Table
 
 | Excuse | Reality |

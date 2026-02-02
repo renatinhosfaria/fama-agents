@@ -55,6 +55,16 @@ For each issue found:
   Suggestion: How to fix it
 ```
 
+## Checklist
+
+- [ ] Context understood (plan, requirements, changed files)
+- [ ] Plan alignment verified (no missing or extra features)
+- [ ] Each file reviewed for correctness, naming, complexity
+- [ ] Security review completed (injection, auth, secrets)
+- [ ] Architecture review completed (patterns, dependencies, layers)
+- [ ] Issues categorized by severity (Critical, Important, Suggestion)
+- [ ] Output formatted with file:line references
+
 ## Red Flags
 
 **STOP the review if you find:**
