@@ -2,8 +2,8 @@ node_modules/
 dist/
 .env
 *.tsbuildinfo
-.fama/workflow/
-.fama/runs/
+.fama/
+**/.fama/
 nul
 .claude
 tests/fixtures/config-test/
