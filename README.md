@@ -17,8 +17,9 @@ O **fama-agents** é um sistema completo que orquestra agentes especializados co
 
 | Feature | Descrição |
 |---------|-----------|
-| 🏗️ **Agentes Especializados** | 10 agentes com personas únicas (arquitetura, QA, segurança, performance, etc.) |
-| 🎯 **Skills Modulares** | 11 skills reutilizáveis com documentação dedicada |
+| 🏗️ **Agentes Especializados** | 14 agentes com personas únicas (arquitetura, backend, frontend, mobile, segurança, etc.) |
+| 🎯 **Skills Modulares** | 15 skills reutilizáveis com documentação dedicada |
+| 📊 **Workflow Templates** | 11 templates de workflow para diferentes cenários (sprint, PRD, tech-spec, etc.) |
 | ⚡ **Engine de Workflow** | Sistema PREVEC com fases, gates de qualidade e escalonamento |
 | 🔧 **CLI Completa** | Interface de linha de comando intuitiva e poderosa |
 | 🔌 **MCP Ready** | Integração nativa com Model Context Protocol |
@@ -33,11 +34,15 @@ O **fama-agents** é um sistema completo que orquestra agentes especializados co
 fama-agents/
 ├── agents/                 # 📋 Definições dos agentes (Markdown + YAML frontmatter)
 │   ├── architect.md
+│   ├── backend-specialist.md
 │   ├── bug-fixer.md
 │   ├── code-reviewer.md
+│   ├── database-specialist.md
 │   ├── devops-specialist.md
 │   ├── documentation-writer.md
 │   ├── feature-developer.md
+│   ├── frontend-specialist.md
+│   ├── mobile-specialist.md
 │   ├── performance-optimizer.md
 │   ├── refactoring-specialist.md
 │   ├── security-auditor.md
@@ -46,18 +51,30 @@ fama-agents/
 │   ├── adversarial-review/
 │   ├── brainstorming/
 │   ├── code-review/
+│   ├── deployment-checklist/
+│   ├── documentation-review/
 │   ├── executing-plans/
 │   ├── feature-breakdown/
+│   ├── implementation-readiness/
 │   ├── refactoring/
+│   ├── release-notes/
 │   ├── security-audit/
 │   ├── systematic-debugging/
 │   ├── test-driven-development/
 │   ├── verification/
 │   └── writing-plans/
-├── workflows/              # 📊 Templates de workflow
+├── workflows/              # 📊 Templates de workflow (11 templates)
 │   ├── architecture-design/
+│   ├── code-review/
+│   ├── epic-creation/
+│   ├── implementation-readiness/
 │   ├── prd-generation/
-│   └── tech-spec/
+│   ├── product-brief/
+│   ├── retrospective/
+│   ├── sprint-planning/
+│   ├── story-creation/
+│   ├── tech-spec/
+│   └── ux-design/
 ├── src/
 │   ├── agents/             # Implementações TypeScript dos agentes
 │   ├── commands/           # Comandos da CLI
@@ -201,38 +218,66 @@ fama mcp
 
 ---
 
-## 🤖 Agentes Disponíveis
+## 🤖 Agentes Disponíveis (14)
 
 | Agente | Ícone | Especialidade |
 |--------|-------|---------------|
 | **architect** | 🏗️ | Design de sistemas e decomposição de features |
-| **feature-developer** | 👨‍💻 | Implementação de novas funcionalidades |
+| **backend-specialist** | ⚙️ | APIs, serviços e lógica de negócio server-side |
 | **bug-fixer** | 🐛 | Diagnóstico e correção de bugs |
 | **code-reviewer** | 🔍 | Revisão de código e garantia de qualidade |
-| **security-auditor** | 🔒 | Auditoria de segurança e vulnerabilidades |
-| **performance-optimizer** | ⚡ | Otimização de performance |
-| **test-writer** | 🧪 | Criação de testes automatizados |
-| **refactoring-specialist** | ♻️ | Refatoração e melhoria de código |
-| **documentation-writer** | 📝 | Documentação técnica |
+| **database-specialist** | 🗄️ | Modelagem, queries e otimização de banco de dados |
 | **devops-specialist** | 🚀 | CI/CD, infraestrutura e deploy |
+| **documentation-writer** | 📝 | Documentação técnica |
+| **feature-developer** | 👨‍💻 | Implementação de novas funcionalidades |
+| **frontend-specialist** | 🎨 | Interfaces, componentes e UX |
+| **mobile-specialist** | 📱 | Desenvolvimento mobile (iOS, Android, React Native) |
+| **performance-optimizer** | ⚡ | Otimização de performance |
+| **refactoring-specialist** | ♻️ | Refatoração e melhoria de código |
+| **security-auditor** | 🔒 | Auditoria de segurança e vulnerabilidades |
+| **test-writer** | 🧪 | Criação de testes automatizados |
 
 ---
 
-## 🎯 Skills Disponíveis
+## 🎯 Skills Disponíveis (15)
 
 | Skill | Fase | Descrição |
 |-------|------|-----------|
-| **brainstorming** | P | Exploração de ideias e design interativo |
-| **feature-breakdown** | P | Decomposição de features em tarefas |
-| **writing-plans** | P | Criação de planos de implementação |
-| **code-review** | R, V | Revisão sistemática de código |
 | **adversarial-review** | V | Revisão adversarial com validação rigorosa |
+| **brainstorming** | P | Exploração de ideias e design interativo |
+| **code-review** | R, V | Revisão sistemática de código |
+| **deployment-checklist** | C | Checklist de deploy e produção |
+| **documentation-review** | V | Revisão de documentação técnica |
+| **executing-plans** | E | Execução de planos de implementação |
+| **feature-breakdown** | P | Decomposição de features em tarefas |
+| **implementation-readiness** | P | Verificação de prontidão para implementação |
 | **refactoring** | E | Técnicas de refatoração de código |
+| **release-notes** | C | Geração de notas de release |
 | **security-audit** | V | Auditoria de segurança |
 | **systematic-debugging** | E | Debugging sistemático |
 | **test-driven-development** | E | Desenvolvimento orientado a testes |
-| **executing-plans** | E | Execução de planos de implementação |
 | **verification** | V | Verificação e validação |
+| **writing-plans** | P | Criação de planos de implementação |
+
+---
+
+## 📊 Workflow Templates (11)
+
+Templates prontos para diferentes cenários de desenvolvimento:
+
+| Template | Descrição |
+|----------|-----------|
+| **architecture-design** | Design e documentação de arquitetura |
+| **code-review** | Fluxo completo de revisão de código |
+| **epic-creation** | Criação e decomposição de epics |
+| **implementation-readiness** | Verificação de prontidão para implementação |
+| **prd-generation** | Geração de Product Requirements Document |
+| **product-brief** | Criação de brief de produto |
+| **retrospective** | Facilitação de retrospectivas |
+| **sprint-planning** | Planejamento de sprint |
+| **story-creation** | Criação de user stories |
+| **tech-spec** | Especificação técnica detalhada |
+| **ux-design** | Design de experiência do usuário |
 
 ---
 
