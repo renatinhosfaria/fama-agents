@@ -4,3 +4,6 @@ dist/
 *.tsbuildinfo
 .fama/workflow/
 nul
+.claude
+tests/fixtures/config-test/
+tests/fixtures/workflow-test/
