@@ -9,3 +9,22 @@ nul
 tests/fixtures/config-test/
 tests/fixtures/workflow-test/
 tests/fixtures/agent-registry-test/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Coverage and cache
+coverage/
+.cache/
+.eslintcache
+.turbo/
+.vite/
+.vitest/
+
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store
