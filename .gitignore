@@ -3,7 +3,9 @@ dist/
 .env
 *.tsbuildinfo
 .fama/workflow/
+.fama/runs/
 nul
 .claude
 tests/fixtures/config-test/
 tests/fixtures/workflow-test/
+tests/fixtures/agent-registry-test/
