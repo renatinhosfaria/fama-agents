@@ -1,4 +1,4 @@
-import type { RunAgentEvent } from "../core/types.js";
+﻿import type { RunAgentEvent } from "../core/types.js";
 import { AgentRegistry } from "../core/agent-registry.js";
 import { runAgent } from "../core/agent-runner.js";
 import { autoSelectAgent } from "../core/scale-detector.js";
@@ -9,6 +9,20 @@ import { log } from "../utils/logger.js";
 import { writeRunRecord } from "../utils/observability.js";
 import { PHASE_DEFINITIONS } from "../workflow/phases.js";
 import { parseScale } from "../workflow/scaling.js";
+import {
+  executeAgentsInParallel,
+  isPhaseParallelizable,
+} from "../core/parallel-executor.js";
+import { parseStructuredOutputWithDetails } from "../core/output-protocol.js";
+import {
+  applyLogMode,
+  buildStructuredOutputFromResult,
+  ensureManifold,
+  formatCliOutput,
+  recordOutputToManifold,
+  resolveLlmFirstRuntime,
+  selectManifoldContext,
+} from "../utils/llm-first.js";
 
 interface WorkflowInitOptions {
   scale?: string;
@@ -36,12 +50,25 @@ interface WorkflowRunOptions {
   cwd?: string;
   complete?: boolean;
   advance?: boolean;
+  structured?: boolean;
+  output?: string;
+  quiet?: boolean;
+  human?: boolean;
+  skillBudget?: string;
+  contextBudget?: string;
+  parallel?: boolean;
 }
 
 function resolveMaxTurns(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) || parsed <= 0 ? fallback : parsed;
+}
+
+function parseIntOption(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? undefined : parsed;
 }
 
 export function workflowInitCommand(
@@ -162,17 +189,36 @@ export async function workflowRunCommand(
   const agentRegistry = new AgentRegistry(cwd);
   const skillRegistry = new SkillRegistry(cwd, config.skillsDir);
 
-  const recommendedAgents = engine.getRecommendedAgents();
-  const agentSlug = opts.agent ?? recommendedAgents[0] ?? autoSelectAgent(task);
-  const agentConfig = agentRegistry.getBySlug(agentSlug);
+  const runtime = resolveLlmFirstRuntime(config, {
+    structured: opts.structured,
+    output: opts.output,
+    quiet: opts.quiet,
+    human: opts.human,
+    skillBudget: parseIntOption(opts.skillBudget),
+    contextBudget: parseIntOption(opts.contextBudget),
+    parallel: opts.parallel,
+    scale: state.scale,
+  });
 
-  if (!agentConfig) {
-    log.error(`Agent "${agentSlug}" not found.`);
-    log.info("Available agents:");
-    for (const a of agentRegistry.getAll()) {
-      log.dim(`  ${a.slug} - ${a.description}`);
+  applyLogMode(runtime.quiet);
+
+  const recommendedAgents = engine.getRecommendedAgents();
+  const selectedAgents = opts.agent
+    ? [opts.agent]
+    : recommendedAgents.length > 0
+      ? recommendedAgents
+      : [autoSelectAgent(task)];
+
+  for (const agentSlug of selectedAgents) {
+    const agentConfig = agentRegistry.getBySlug(agentSlug);
+    if (!agentConfig) {
+      log.error(`Agent "${agentSlug}" not found.`);
+      log.info("Available agents:");
+      for (const a of agentRegistry.getAll()) {
+        log.dim(`  ${a.slug} - ${a.description}`);
+      }
+      process.exit(1);
     }
-    process.exit(1);
   }
 
   const phaseSkills = engine.getRecommendedSkills();
@@ -189,8 +235,155 @@ export async function workflowRunCommand(
 
   log.heading(`Workflow run: ${state.name}`);
   log.info(`Phase: ${phase} (${phaseDef.name})`);
-  log.info(`Agent: ${agentSlug}`);
+  log.info(`Agents: ${selectedAgents.join(", ")}`);
   log.info(`Skills: ${skills.join(", ") || "(none)"}`);
+
+  const manifoldEnabled = runtime.enabled && config.llmFirst.manifold.enabled;
+  let manifold = null as ReturnType<typeof ensureManifold> | null;
+  let context: string | undefined;
+
+  if (manifoldEnabled && runtime.contextBudget !== undefined) {
+    manifold = ensureManifold(cwd, state);
+    const selected = selectManifoldContext(manifold, phase, runtime.contextBudget);
+    context = selected.context;
+  }
+
+  const parallelAllowed =
+    runtime.parallel &&
+    config.llmFirst.parallel.phases.includes(phase) &&
+    isPhaseParallelizable(phase);
+
+  if (parallelAllowed && selectedAgents.length > 1) {
+    const tasks = selectedAgents.map((agent) => ({
+      agent,
+      task: `[${phase}:${agent.toUpperCase()}] ${contextualTask}`,
+      skills,
+    }));
+
+    const summary = await executeAgentsInParallel(tasks, agentRegistry, skillRegistry, {
+      model,
+      maxTurns,
+      cwd,
+      verbose: opts.verbose ?? false,
+      scale: state.scale,
+      skillTokenBudget: runtime.skillBudget,
+      context,
+      structured: runtime.structured,
+      phaseOverride: phase,
+    });
+
+    const results = summary.results.map((result) => {
+      const raw = result.result ?? result.error ?? "";
+      const parsed = parseStructuredOutputWithDetails(raw);
+      if (parsed.output) {
+        parsed.output.meta.phase = phase;
+      }
+      return {
+        agent: result.agent,
+        status: result.status,
+        durationMs: result.durationMs,
+        costUSD: result.costUSD,
+        output: parsed.output ?? undefined,
+        parseError: parsed.output ? undefined : parsed.error ?? undefined,
+        raw: parsed.output ? undefined : raw,
+        error: result.status === "error" ? result.error : undefined,
+      };
+    });
+
+    let parseErrors = 0;
+    for (const r of results) {
+      if (r.parseError) parseErrors++;
+    }
+
+    // Write run records and update manifold
+    for (const result of summary.results) {
+      const raw = result.result ?? result.error;
+      const finishedAt = new Date();
+      const startedAt = new Date(finishedAt.getTime() - result.durationMs);
+
+      const recordPath = writeRunRecord(cwd, {
+        status: result.status,
+        workflowName: state.name,
+        phase,
+        task: contextualTask,
+        taskOriginal: task,
+        agent: result.agent,
+        skills,
+        model,
+        maxTurns,
+        cwd,
+        startedAt: startedAt.toISOString(),
+        finishedAt: finishedAt.toISOString(),
+        durationMs: result.durationMs,
+        costUSD: result.costUSD,
+        result: result.status === "success" ? result.result : undefined,
+        error: result.status === "error" ? result.error : undefined,
+      });
+
+      engine.appendOutput(phase, recordPath);
+
+      if (manifoldEnabled && manifold) {
+        const { output } = buildStructuredOutputFromResult(
+          raw,
+          phase,
+          result.agent,
+          config.llmFirst.manifold.policy,
+          phase,
+        );
+        if (output) {
+          manifold = recordOutputToManifold(cwd, manifold, phase, output);
+        }
+      }
+    }
+
+    if (runtime.outputFormat === "raw") {
+      for (const result of summary.results) {
+        const header = `=== ${result.agent} (${result.status}) ===`;
+        const body = result.result ?? result.error ?? "";
+        console.log(`${header}\n${body}\n`);
+      }
+    } else {
+      const payload = {
+        phase,
+        workflow: state.name,
+        summary: {
+          totalDurationMs: summary.totalDurationMs,
+          totalCostUSD: summary.totalCostUSD,
+          successCount: summary.successCount,
+          errorCount: summary.errorCount,
+        },
+        results,
+        parseErrors,
+      };
+      const text =
+        runtime.outputFormat === "pretty"
+          ? JSON.stringify(payload, null, 2)
+          : JSON.stringify(payload);
+      console.log(text);
+    }
+
+    if (opts.complete || opts.advance) {
+      engine.completeCurrent();
+    }
+
+    if (opts.advance) {
+      try {
+        const advanced = await engine.advance();
+        if (advanced) {
+          log.success(`Advanced to phase ${advanced.phase}.`);
+        } else {
+          log.success("Workflow completed!");
+        }
+      } catch (err) {
+        log.error(err instanceof Error ? err.message : String(err));
+        process.exit(1);
+      }
+    }
+
+    return;
+  }
+
+  const agentSlug = selectedAgents[0] ?? autoSelectAgent(task);
 
   let event: RunAgentEvent | undefined;
   let result: string | undefined;
@@ -240,6 +433,11 @@ export async function workflowRunCommand(
         maxTurns,
         verbose: opts.verbose ?? false,
         cwd,
+        structured: runtime.structured,
+        skillTokenBudget: runtime.skillBudget,
+        context,
+        scale: state.scale,
+        phaseOverride: phase,
         onEvent: (e) => {
           event = e;
         },
@@ -255,15 +453,45 @@ export async function workflowRunCommand(
     if (recordPath) {
       log.warn(`Run recorded at ${recordPath}`);
     }
-    log.error(err instanceof Error ? err.message : String(err));
+    if (runtime.outputFormat !== "raw") {
+      const payload = {
+        ok: false,
+        error: { message: err instanceof Error ? err.message : String(err) },
+        meta: { agent: agentSlug, phase },
+      };
+      const text =
+        runtime.outputFormat === "pretty"
+          ? JSON.stringify(payload, null, 2)
+          : JSON.stringify(payload);
+      console.log(text);
+    } else {
+      log.error(err instanceof Error ? err.message : String(err));
+    }
     process.exit(1);
   }
 
   writeRecord("success");
 
-  if (result) {
-    console.log("\n" + result);
+  if (manifoldEnabled && manifold) {
+    const { output } = buildStructuredOutputFromResult(
+      result,
+      phase,
+      agentSlug,
+      config.llmFirst.manifold.policy,
+      phase,
+    );
+    if (output) {
+      manifold = recordOutputToManifold(cwd, manifold, phase, output);
+    }
   }
+
+  const formatted = formatCliOutput(result, {
+    outputFormat: runtime.outputFormat,
+    agent: agentSlug,
+    phase,
+    phaseOverride: phase,
+  });
+  console.log(formatted.text);
 
   if (recordPath) {
     log.success(`Run recorded at ${recordPath}`);

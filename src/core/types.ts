@@ -164,10 +164,16 @@ export interface RunAgentOptions {
   dryRun?: boolean;
   /** Max estimated tokens for all skills combined. Skills beyond budget are skipped. */
   skillTokenBudget?: number;
+  /** Extra context injected into system prompt (e.g., Context Manifold). */
+  context?: string;
   permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
   onEvent?: (event: RunAgentEvent) => void;
   /** Project scale for model routing (auto-detected if not provided) */
   scale?: ProjectScale;
+  /** Enable structured output mode (JSON with schema validation) */
+  structured?: boolean;
+  /** Override workflow phase used in structured output meta. */
+  phaseOverride?: WorkflowPhase;
 }
 
 export interface RunAgentMetrics {
@@ -201,6 +207,36 @@ export interface WorkflowGatesConfig {
   gates?: GateDefinition[];
 }
 
+export type BudgetConfig =
+  | number
+  | {
+      quick?: number;
+      small?: number;
+      medium?: number;
+      large?: number;
+    };
+
+export interface LlmFirstConfig {
+  enabled: boolean;
+  output: {
+    structured: boolean;
+    format: "compact" | "pretty" | "raw";
+    quiet: boolean;
+  };
+  budgets: {
+    skills?: BudgetConfig;
+    context?: BudgetConfig;
+  };
+  manifold: {
+    enabled: boolean;
+    policy: "always" | "structuredOnly";
+  };
+  parallel: {
+    enabled: boolean;
+    phases: WorkflowPhase[];
+  };
+}
+
 export interface FamaConfig {
   model: string;
   maxTurns: number;
@@ -211,6 +247,7 @@ export interface FamaConfig {
     defaultScale: ProjectScale;
     gates: WorkflowGatesConfig;
   };
+  llmFirst: LlmFirstConfig;
   teams?: Record<string, TeamConfig>;
 }
 
@@ -323,3 +360,72 @@ export interface AgentMemory {
   preferences: Record<string, unknown>;
   entries: MemoryEntry[];
 }
+
+// ─── LLM-First Architecture (Re-exports) ───
+
+// Structured Output Protocol
+export type {
+  StructuredAgentOutput,
+  OutputMeta,
+  ResultPayload,
+  ResultStatus,
+  Artifact,
+  ArtifactType,
+  Decision,
+  Reversibility,
+  Issue,
+  IssueSeverity,
+  HandoffInfo,
+} from "./output-protocol.js";
+
+export {
+  CURRENT_SCHEMA_VERSION,
+  createSuccessOutput,
+  createErrorOutput,
+  addArtifact,
+  addDecision,
+  addIssue,
+  parseStructuredOutput,
+  isStructuredOutput,
+  serializeCompact,
+  serializeReadable,
+} from "./output-protocol.js";
+
+// Token Estimation
+export type {
+  TokenBudgetAllocation,
+  TokenUsageTracker,
+  SkillTokenCache,
+} from "./token-estimator.js";
+
+export {
+  estimateTokens,
+  estimateTokensCharBased,
+  estimateTokensWordBased,
+  detectCodeRatio,
+  getBudgetForScale,
+  createCustomBudget,
+  totalBudget,
+  createUsageTracker,
+  remainingBudget,
+  isBudgetExceeded,
+  truncateToTokenBudget,
+  splitIntoChunks,
+  createSkillTokenCache,
+  BUDGET_PROFILES,
+} from "./token-estimator.js";
+
+// Compact Prompt Format
+export type {
+  CompactPromptSection,
+  CompactSkillSection,
+  CompactContextSection,
+  CompactPromptOptions,
+} from "./compact-prompt.js";
+
+export {
+  buildCompactPrompt,
+  convertMarkdownToCompact,
+  convertSkillToCompiled,
+  estimateTokenSavings,
+} from "./compact-prompt.js";

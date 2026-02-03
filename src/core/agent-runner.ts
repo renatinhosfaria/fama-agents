@@ -6,6 +6,7 @@ import { startSpan, endSpan } from "../utils/observability.js";
 import { loadMemory } from "./agent-memory.js";
 import { AgentNotFoundError, AgentBuildError, AgentExecutionError } from "./errors.js";
 import { resolveProviderWithFallback, getModelForScale } from "./llm-provider.js";
+import { CURRENT_SCHEMA_VERSION } from "./output-protocol.js";
 
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 1000;
@@ -187,11 +188,25 @@ export async function runAgent(
   try {
     let result: string | undefined;
 
+    // Build system prompt with optional context and structured output instructions
+    let systemPrompt = agentDef.prompt;
+
+    if (options.context) {
+      systemPrompt = `${systemPrompt}\n\n---\n${options.context}\n`;
+    }
+
+    if (options.structured) {
+      systemPrompt = appendStructuredOutputInstructions(systemPrompt, options.phaseOverride);
+      if (options.verbose) {
+        log.dim("Structured output mode enabled");
+      }
+    }
+
     // Retry loop for transient API errors
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         const queryIterator = provider.query(options.task, {
-          systemPrompt: agentDef.prompt,
+          systemPrompt,
           tools: allowedTools,
           agents: Object.keys(subagents).length > 0 ? subagents : undefined,
           model: resolvedModel,
@@ -279,4 +294,78 @@ export async function runAgent(
     });
     throw err;
   }
+}
+
+// ─── Structured Output ───
+
+/**
+ * Appends structured output instructions to the system prompt.
+ * This instructs the LLM to return output in JSON format following
+ * the StructuredAgentOutput schema.
+ */
+function appendStructuredOutputInstructions(
+  basePrompt: string,
+  phaseOverride?: "P" | "R" | "E" | "V" | "C",
+): string {
+  const instructions = `
+
+---
+
+## STRUCTURED OUTPUT MODE
+
+You MUST return your final response as a JSON object inside a \`\`\`json code block.
+The JSON must follow this exact schema (StructuredAgentOutput v${CURRENT_SCHEMA_VERSION}):
+
+\`\`\`typescript
+interface StructuredAgentOutput {
+  schemaVersion: string;  // "${CURRENT_SCHEMA_VERSION}"
+  meta: {
+    agent: string;        // Your agent name
+    skill: string | null; // Primary skill used
+    phase: "P" | "R" | "E" | "V" | "C";  // Workflow phase
+    timestamp: string;    // ISO timestamp
+    tokensUsed: number;   // Estimated tokens
+  };
+  result: {
+    status: "success" | "partial" | "blocked" | "error";
+    summary: string;      // One-sentence summary (max 100 chars)
+    content: unknown;     // Your main output content
+  };
+  artifacts: Array<{     // Files, decisions, tasks produced
+    type: "file" | "decision" | "task" | "issue" | "reference";
+    path?: string;
+    content?: string;
+    hash?: string;
+  }>;
+  decisions: Array<{     // Key decisions made
+    id: string;
+    decision: string;
+    rationale: string;
+    alternativesConsidered: string[];
+    reversibility: "easy" | "moderate" | "hard" | "irreversible";
+  }>;
+  issues: Array<{        // Issues found or raised
+    id: string;
+    description: string;
+    severity: "critical" | "high" | "medium" | "low" | "info";
+    location?: string;
+    suggestedFix?: string;
+  }>;
+  handoff: {             // Info for next workflow phase
+    nextPhase: "P" | "R" | "E" | "V" | "C" | null;
+    requiredContext: string[];
+    blockingIssues: string[];
+    suggestedAgents: string[];
+  };
+}
+\`\`\`
+
+CRITICAL: Your final message MUST contain a valid JSON object in a \`\`\`json block.
+`;
+
+  const phaseNote = phaseOverride
+    ? `\nPHASE OVERRIDE: Set meta.phase to "${phaseOverride}".\n`
+    : "";
+
+  return basePrompt + instructions + phaseNote;
 }

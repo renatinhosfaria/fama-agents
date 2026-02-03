@@ -1,7 +1,19 @@
-import { AgentRegistry } from "../core/agent-registry.js";
+﻿import { AgentRegistry } from "../core/agent-registry.js";
 import { SkillRegistry } from "../core/skill-registry.js";
+import { detectScale } from "../core/scale-detector.js";
 import { loadConfig } from "../utils/config.js";
 import { log } from "../utils/logger.js";
+import { parseStructuredOutputWithDetails } from "../core/output-protocol.js";
+import {
+  applyLogMode,
+  buildStructuredOutputFromResult,
+  createAdhocWorkflowState,
+  ensureManifold,
+  parsePhase,
+  recordOutputToManifold,
+  resolveLlmFirstRuntime,
+  selectManifoldContext,
+} from "../utils/llm-first.js";
 import {
   selectAgents,
   generateRound,
@@ -16,6 +28,19 @@ interface PartyCommandOpts {
   maxTurns?: string;
   verbose?: boolean;
   cwd?: string;
+  structured?: boolean;
+  output?: string;
+  quiet?: boolean;
+  human?: boolean;
+  skillBudget?: string;
+  contextBudget?: string;
+  phase?: string;
+}
+
+function parseIntOption(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? undefined : parsed;
 }
 
 export async function partyCommand(
@@ -28,6 +53,21 @@ export async function partyCommand(
   const agentSlugs = opts.agents?.split(",").map((s) => s.trim());
   const model = opts.model ?? config.model;
   const maxTurns = opts.maxTurns ? parseInt(opts.maxTurns, 10) : 10;
+
+  const scale = detectScale(topic);
+  const runtime = resolveLlmFirstRuntime(config, {
+    structured: opts.structured,
+    output: opts.output,
+    quiet: opts.quiet,
+    human: opts.human,
+    skillBudget: parseIntOption(opts.skillBudget),
+    contextBudget: parseIntOption(opts.contextBudget),
+    scale,
+  });
+
+  applyLogMode(runtime.quiet);
+
+  const phase = parsePhase(opts.phase, "P");
 
   const registry = new AgentRegistry(cwd);
   const skillRegistry = new SkillRegistry(cwd, config.skillsDir);
@@ -43,10 +83,23 @@ export async function partyCommand(
     return p?.icon ? `${p.icon} ${p.displayName ?? a.slug}` : a.slug;
   });
 
-  log.heading(`Party Mode: "${topic}"`);
-  log.dim(`  Participantes: ${labels.join(", ")}`);
-  log.dim(`  Rounds: ${numRounds}`);
-  console.log("");
+  if (runtime.outputFormat === "raw") {
+    log.heading(`Party Mode: "${topic}"`);
+    log.dim(`  Participantes: ${labels.join(", ")}`);
+    log.dim(`  Rounds: ${numRounds}`);
+    console.log("");
+  }
+
+  const manifoldEnabled = runtime.enabled && config.llmFirst.manifold.enabled;
+  let manifold = null as ReturnType<typeof ensureManifold> | null;
+  let context: string | undefined;
+
+  if (manifoldEnabled && runtime.contextBudget !== undefined) {
+    const workflowState = createAdhocWorkflowState("adhoc-party", phase, scale);
+    manifold = ensureManifold(cwd, workflowState);
+    const selected = selectManifoldContext(manifold, phase, runtime.contextBudget);
+    context = selected.context;
+  }
 
   const history: PartyRound[] = [];
 
@@ -55,7 +108,9 @@ export async function partyCommand(
     const agentIndex = (r - 1) % participants.length;
     const agent = participants[agentIndex]!;
 
-    log.heading(`Round ${r}/${numRounds}`);
+    if (runtime.outputFormat === "raw") {
+      log.heading(`Round ${r}/${numRounds}`);
+    }
 
     const round = await generateRound(
       topic,
@@ -64,17 +119,85 @@ export async function partyCommand(
       r,
       registry,
       skillRegistry,
-      { rounds: numRounds, model, maxTurns, verbose: opts.verbose, cwd },
+      {
+        rounds: numRounds,
+        model,
+        maxTurns,
+        verbose: opts.verbose,
+        cwd,
+        structured: runtime.structured,
+        skillTokenBudget: runtime.skillBudget,
+        context,
+        phaseOverride: phase,
+        scale,
+      },
     );
 
     history.push(round);
-    console.log(`\n${round.displayLabel}:`);
-    console.log(round.response);
-    console.log("");
+
+    if (manifoldEnabled && manifold) {
+      const { output } = buildStructuredOutputFromResult(
+        round.response,
+        phase,
+        round.agentSlug,
+        config.llmFirst.manifold.policy,
+        phase,
+      );
+      if (output) {
+        manifold = recordOutputToManifold(cwd, manifold, phase, output);
+      }
+    }
+
+    if (runtime.outputFormat === "raw") {
+      console.log(`\n${round.displayLabel}:`);
+      console.log(round.response);
+      console.log("");
+    }
   }
 
-  // Final synthesis
-  log.heading("Síntese");
-  const summary = synthesize(history);
-  console.log(summary);
+  if (runtime.outputFormat === "raw") {
+    log.heading("Síntese");
+    const summary = synthesize(history);
+    console.log(summary);
+    return;
+  }
+
+  const rounds = history.map((round) => {
+    const parsed = parseStructuredOutputWithDetails(round.response);
+    if (parsed.output) {
+      parsed.output.meta.phase = phase;
+    }
+    return {
+      round: round.round,
+      agent: round.agentSlug,
+      output: parsed.output ?? undefined,
+      parseError: parsed.output ? undefined : parsed.error ?? undefined,
+      raw: parsed.output ? undefined : round.response,
+    };
+  });
+
+  const summary = rounds.map((round) => {
+    if (round.output) {
+      return {
+        agent: round.agent,
+        summary: round.output.result.summary,
+      };
+    }
+    return {
+      agent: round.agent,
+      summary: (round.raw ?? "").slice(0, 150),
+    };
+  });
+
+  const payload = {
+    topic,
+    rounds,
+    summary,
+  };
+
+  const text =
+    runtime.outputFormat === "pretty"
+      ? JSON.stringify(payload, null, 2)
+      : JSON.stringify(payload);
+  console.log(text);
 }

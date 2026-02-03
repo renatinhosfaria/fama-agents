@@ -1,4 +1,4 @@
-import type { AgentConfig } from "./types.js";
+﻿import type { AgentConfig, ProjectScale, WorkflowPhase } from "./types.js";
 import type { AgentRegistry } from "./agent-registry.js";
 import type { SkillRegistry } from "./skill-registry.js";
 import { runAgent } from "./agent-runner.js";
@@ -18,6 +18,11 @@ export interface PartyOptions {
   maxTurns?: number;
   verbose?: boolean;
   cwd?: string;
+  structured?: boolean;
+  skillTokenBudget?: number;
+  context?: string;
+  phaseOverride?: WorkflowPhase;
+  scale?: ProjectScale;
 }
 
 /**
@@ -107,6 +112,11 @@ export async function generateRound(
       maxTurns: opts.maxTurns ?? 10,
       verbose: opts.verbose ?? false,
       cwd: opts.cwd ?? process.cwd(),
+      structured: opts.structured,
+      skillTokenBudget: opts.skillTokenBudget,
+      context: opts.context,
+      phaseOverride: opts.phaseOverride,
+      scale: opts.scale,
     },
     registry,
     skillRegistry,

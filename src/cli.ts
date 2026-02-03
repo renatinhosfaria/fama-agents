@@ -28,6 +28,14 @@ export function createCli() {
     .option("--verbose", "Show agent tool calls")
     .option("--dry-run", "Preview execution without running")
     .option("--trigger <trigger>", "Execute a menu trigger from the agent")
+    .option("--structured", "Enable structured output mode (JSON with schema)")
+    .option("--no-structured", "Disable structured output mode")
+    .option("--output <format>", "Output format: compact, pretty, raw")
+    .option("--quiet", "Suppress human logs")
+    .option("--human", "Enable human-friendly logs")
+    .option("--skill-budget <n>", "Max tokens for skills")
+    .option("--context-budget <n>", "Max tokens for context")
+    .option("--phase <phase>", "Phase override: P, R, E, V, C")
     .option("--cwd <path>", "Working directory")
     .action(runCommand);
 
@@ -39,6 +47,14 @@ export function createCli() {
     .option("--agent <slug>", "Agent to use")
     .option("--model <model>", "Model to use")
     .option("--verbose", "Show agent tool calls")
+    .option("--structured", "Enable structured output mode (JSON with schema)")
+    .option("--no-structured", "Disable structured output mode")
+    .option("--output <format>", "Output format: compact, pretty, raw")
+    .option("--quiet", "Suppress human logs")
+    .option("--human", "Enable human-friendly logs")
+    .option("--skill-budget <n>", "Max tokens for skills")
+    .option("--context-budget <n>", "Max tokens for context")
+    .option("--phase <phase>", "Phase override: P, R, E, V, C")
     .option("--cwd <path>", "Working directory")
     .action(quickCommand);
 
@@ -50,6 +66,14 @@ export function createCli() {
     .option("--execute <file>", "Execute an existing plan file")
     .option("--model <model>", "Model to use")
     .option("--verbose", "Show agent tool calls")
+    .option("--structured", "Enable structured output mode (JSON with schema)")
+    .option("--no-structured", "Disable structured output mode")
+    .option("--output <format>", "Output format: compact, pretty, raw")
+    .option("--quiet", "Suppress human logs")
+    .option("--human", "Enable human-friendly logs")
+    .option("--skill-budget <n>", "Max tokens for skills")
+    .option("--context-budget <n>", "Max tokens for context")
+    .option("--phase <phase>", "Phase override: P, R, E, V, C")
     .option("--cwd <path>", "Working directory")
     .action(planCommand);
 
@@ -62,6 +86,14 @@ export function createCli() {
     .option("--verbose", "Show agent tool calls")
     .option("--validate", "Use adversarial review mode (zero findings triggers re-analysis)")
     .option("--checklist <path>", "Validate against a checklist file (implies --validate)")
+    .option("--structured", "Enable structured output mode (JSON with schema)")
+    .option("--no-structured", "Disable structured output mode")
+    .option("--output <format>", "Output format: compact, pretty, raw")
+    .option("--quiet", "Suppress human logs")
+    .option("--human", "Enable human-friendly logs")
+    .option("--skill-budget <n>", "Max tokens for skills")
+    .option("--context-budget <n>", "Max tokens for context")
+    .option("--phase <phase>", "Phase override: P, R, E, V, C")
     .option("--cwd <path>", "Working directory")
     .action(reviewCommand);
 
@@ -72,6 +104,14 @@ export function createCli() {
     .argument("<description>", "Bug description")
     .option("--model <model>", "Model to use")
     .option("--verbose", "Show agent tool calls")
+    .option("--structured", "Enable structured output mode (JSON with schema)")
+    .option("--no-structured", "Disable structured output mode")
+    .option("--output <format>", "Output format: compact, pretty, raw")
+    .option("--quiet", "Suppress human logs")
+    .option("--human", "Enable human-friendly logs")
+    .option("--skill-budget <n>", "Max tokens for skills")
+    .option("--context-budget <n>", "Max tokens for context")
+    .option("--phase <phase>", "Phase override: P, R, E, V, C")
     .option("--cwd <path>", "Working directory")
     .action(debugCommand);
 
@@ -215,6 +255,15 @@ function registerWorkflowCommands(program: Command): void {
     .option("--complete", "Mark phase as completed after run")
     .option("--advance", "Advance to next phase after run")
     .option("--verbose", "Show agent tool calls")
+    .option("--structured", "Enable structured output mode (JSON with schema)")
+    .option("--no-structured", "Disable structured output mode")
+    .option("--output <format>", "Output format: compact, pretty, raw")
+    .option("--quiet", "Suppress human logs")
+    .option("--human", "Enable human-friendly logs")
+    .option("--skill-budget <n>", "Max tokens for skills")
+    .option("--context-budget <n>", "Max tokens for context")
+    .option("--parallel", "Run phase agents in parallel when supported")
+    .option("--no-parallel", "Disable parallel execution")
     .option("--cwd <path>", "Working directory")
     .action(async (task: string, opts) => {
       const { workflowRunCommand } = await import("./commands/workflow.js");
@@ -228,11 +277,31 @@ function registerWorkflowCommands(program: Command): void {
     .option("--model <model>", "Model to use")
     .option("--max-turns <n>", "Maximum turns")
     .option("--verbose", "Show agent tool calls")
+    .option("--structured", "Enable structured output mode (JSON with schema)")
+    .option("--no-structured", "Disable structured output mode")
+    .option("--output <format>", "Output format: compact, pretty, raw")
+    .option("--quiet", "Suppress human logs")
+    .option("--human", "Enable human-friendly logs")
+    .option("--skill-budget <n>", "Max tokens for skills")
+    .option("--context-budget <n>", "Max tokens for context")
+    .option("--phase <phase>", "Phase override: P, R, E, V, C")
     .option("--cwd <path>", "Working directory")
     .action(
       async (
         name: string,
-        opts: { model?: string; maxTurns?: string; verbose?: boolean; cwd?: string },
+        opts: {
+          model?: string;
+          maxTurns?: string;
+          verbose?: boolean;
+          cwd?: string;
+          structured?: boolean;
+          output?: string;
+          quiet?: boolean;
+          human?: boolean;
+          skillBudget?: string;
+          contextBudget?: string;
+          phase?: string;
+        },
       ) => {
         const { workflowExecCommand } = await import("./commands/workflow-exec.js");
         await workflowExecCommand(name, opts);
@@ -348,6 +417,14 @@ function registerPartyCommand(program: Command): void {
     .option("--model <model>", "Model to use")
     .option("--max-turns <n>", "Maximum turns per agent")
     .option("--verbose", "Show agent tool calls")
+    .option("--structured", "Enable structured output mode (JSON with schema)")
+    .option("--no-structured", "Disable structured output mode")
+    .option("--output <format>", "Output format: compact, pretty, raw")
+    .option("--quiet", "Suppress human logs")
+    .option("--human", "Enable human-friendly logs")
+    .option("--skill-budget <n>", "Max tokens for skills")
+    .option("--context-budget <n>", "Max tokens for context")
+    .option("--phase <phase>", "Phase override: P, R, E, V, C")
     .option("--cwd <path>", "Working directory")
     .action(async (topic: string, opts) => {
       const { partyCommand } = await import("./commands/party.js");

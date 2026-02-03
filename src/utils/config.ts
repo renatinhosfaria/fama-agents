@@ -18,6 +18,23 @@ const DEFAULT_CONFIG: FamaConfig = {
       requireApproval: false,
     },
   },
+  llmFirst: {
+    enabled: true,
+    output: {
+      structured: true,
+      format: "compact",
+      quiet: true,
+    },
+    budgets: {},
+    manifold: {
+      enabled: true,
+      policy: "always",
+    },
+    parallel: {
+      enabled: true,
+      phases: ["R", "V"],
+    },
+  },
 };
 
 /**
@@ -100,6 +117,66 @@ export function loadConfig(cwd: string = process.cwd()): FamaConfig {
     } else {
       log.warn(`Invalid FAMA_PROVIDER "${prov}", using default.`);
     }
+  }
+
+  const parseBool = (value: string | undefined): boolean | undefined => {
+    if (!value) return undefined;
+    const normalized = value.toLowerCase();
+    if (["1", "true", "yes", "y", "on"].includes(normalized)) return true;
+    if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
+    return undefined;
+  };
+
+  const parseIntEnv = (value: string | undefined): number | undefined => {
+    if (!value) return undefined;
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  };
+
+  const llmEnabled = parseBool(process.env["FAMA_LLM_FIRST"]);
+  if (llmEnabled !== undefined) config.llmFirst.enabled = llmEnabled;
+
+  const structured = parseBool(process.env["FAMA_LLM_FIRST_STRUCTURED"]);
+  if (structured !== undefined) config.llmFirst.output.structured = structured;
+
+  const quiet = parseBool(process.env["FAMA_LLM_FIRST_QUIET"]);
+  if (quiet !== undefined) config.llmFirst.output.quiet = quiet;
+
+  const format = process.env["FAMA_LLM_FIRST_FORMAT"];
+  if (format && ["compact", "pretty", "raw"].includes(format)) {
+    config.llmFirst.output.format = format as "compact" | "pretty" | "raw";
+  }
+
+  const skillBudget = parseIntEnv(process.env["FAMA_SKILL_BUDGET"]);
+  if (skillBudget !== undefined) {
+    config.llmFirst.budgets.skills = skillBudget;
+  }
+
+  const contextBudget = parseIntEnv(process.env["FAMA_CONTEXT_BUDGET"]);
+  if (contextBudget !== undefined) {
+    config.llmFirst.budgets.context = contextBudget;
+  }
+
+  const parallelEnabled = parseBool(process.env["FAMA_PARALLEL"]);
+  if (parallelEnabled !== undefined) config.llmFirst.parallel.enabled = parallelEnabled;
+
+  const parallelPhases = process.env["FAMA_PARALLEL_PHASES"];
+  if (parallelPhases) {
+    const phases = parallelPhases
+      .split(",")
+      .map((p) => p.trim().toUpperCase())
+      .filter((p) => ["P", "R", "E", "V", "C"].includes(p));
+    if (phases.length > 0) {
+      config.llmFirst.parallel.phases = phases as ("P" | "R" | "E" | "V" | "C")[];
+    }
+  }
+
+  const manifoldEnabled = parseBool(process.env["FAMA_MANIFOLD"]);
+  if (manifoldEnabled !== undefined) config.llmFirst.manifold.enabled = manifoldEnabled;
+
+  const manifoldPolicy = process.env["FAMA_MANIFOLD_POLICY"];
+  if (manifoldPolicy && ["always", "structuredOnly"].includes(manifoldPolicy)) {
+    config.llmFirst.manifold.policy = manifoldPolicy as "always" | "structuredOnly";
   }
 
   // Initialize i18n with resolved language

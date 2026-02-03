@@ -36,6 +36,9 @@ export interface ParallelExecutionOptions {
   verbose?: boolean;
   scale?: ProjectScale;
   skillTokenBudget?: number;
+  context?: string;
+  structured?: boolean;
+  phaseOverride?: "P" | "R" | "E" | "V" | "C";
 }
 
 /** Aggregated results from parallel execution */
@@ -91,6 +94,9 @@ export async function executeAgentsInParallel(
           verbose: false, // Suppress individual output in parallel mode
           scale: options.scale,
           skillTokenBudget: options.skillTokenBudget,
+          context: options.context,
+          structured: options.structured,
+          phaseOverride: options.phaseOverride,
           onEvent: (event) => {
             if (event.metrics.costUSD !== undefined) {
               costUSD = event.metrics.costUSD;
@@ -184,6 +190,261 @@ export function createValidationTasks(
     task: `[${agent.toUpperCase()}] ${baseTask}`,
     skills: skillOverrides?.[agent],
   }));
+}
+
+// ─── Phase-Based Parallel Execution ───
+
+/** Configuration for parallel execution by phase */
+export interface PhaseParallelConfig {
+  /** Phase identifier */
+  phase: "P" | "R" | "E" | "V" | "C";
+  /** Agents to run in parallel */
+  agents: string[];
+  /** Barrier strategy: wait for all, any, or quorum */
+  barrier: "all" | "any" | "quorum";
+  /** Number of agents required for quorum (only if barrier = "quorum") */
+  quorumCount?: number;
+  /** Timeout in milliseconds per agent */
+  timeoutMs?: number;
+  /** Whether phase supports parallel execution */
+  parallelEnabled: boolean;
+}
+
+/** Default parallel configurations by phase */
+export const DEFAULT_PHASE_PARALLEL_CONFIG: Record<string, PhaseParallelConfig> = {
+  P: {
+    phase: "P",
+    agents: ["architect"],
+    barrier: "all",
+    parallelEnabled: false, // Planning is usually sequential
+  },
+  R: {
+    phase: "R",
+    agents: ["security-auditor", "code-reviewer", "architect"],
+    barrier: "all",
+    parallelEnabled: true, // Review can run multiple reviewers in parallel
+  },
+  E: {
+    phase: "E",
+    agents: ["feature-developer"],
+    barrier: "all",
+    parallelEnabled: false, // Execution is usually sequential
+  },
+  V: {
+    phase: "V",
+    agents: ["test-writer", "code-reviewer", "security-auditor", "performance-optimizer"],
+    barrier: "all",
+    parallelEnabled: true, // Validation runs all validators in parallel
+  },
+  C: {
+    phase: "C",
+    agents: ["documentation-writer", "devops-specialist"],
+    barrier: "all",
+    parallelEnabled: false, // Confirmation is usually sequential
+  },
+};
+
+/**
+ * Gets the parallel configuration for a phase.
+ */
+export function getPhaseParallelConfig(
+  phase: "P" | "R" | "E" | "V" | "C",
+  customConfig?: Partial<PhaseParallelConfig>,
+): PhaseParallelConfig {
+  const defaultConfig = DEFAULT_PHASE_PARALLEL_CONFIG[phase];
+  if (!customConfig) return defaultConfig;
+
+  return {
+    ...defaultConfig,
+    ...customConfig,
+    phase, // Ensure phase is not overridden
+  };
+}
+
+/**
+ * Checks if a phase supports parallel execution.
+ */
+export function isPhaseParallelizable(phase: "P" | "R" | "E" | "V" | "C"): boolean {
+  return DEFAULT_PHASE_PARALLEL_CONFIG[phase]?.parallelEnabled ?? false;
+}
+
+/**
+ * Creates tasks for any phase based on configuration.
+ */
+export function createPhaseTasks(
+  baseTask: string,
+  config: PhaseParallelConfig,
+  skillOverrides?: Record<string, string[]>,
+): ParallelAgentTask[] {
+  return config.agents.map((agent) => ({
+    agent,
+    task: `[${config.phase}:${agent.toUpperCase()}] ${baseTask}`,
+    skills: skillOverrides?.[agent],
+  }));
+}
+
+/**
+ * Creates tasks for the Review (R) phase.
+ */
+export function createReviewTasks(
+  baseTask: string,
+  customAgents?: string[],
+  skillOverrides?: Record<string, string[]>,
+): ParallelAgentTask[] {
+  const config = getPhaseParallelConfig("R");
+  const agents = customAgents ?? config.agents;
+
+  return agents.map((agent) => ({
+    agent,
+    task: `[REVIEW:${agent.toUpperCase()}] ${baseTask}`,
+    skills: skillOverrides?.[agent],
+  }));
+}
+
+/** Execution plan with multiple stages */
+export interface ParallelExecutionPlan {
+  /** Unique identifier for the plan */
+  id: string;
+  /** Plan name */
+  name: string;
+  /** Ordered stages to execute */
+  stages: ExecutionStage[];
+}
+
+/** A single stage in the execution plan */
+export interface ExecutionStage {
+  /** Stage identifier */
+  stageId: string;
+  /** Agent tasks to run in this stage */
+  tasks: ParallelAgentTask[];
+  /** Barrier strategy for this stage */
+  barrier: "all" | "any" | "quorum";
+  /** Quorum count if barrier is "quorum" */
+  quorumCount?: number;
+  /** Stage timeout in milliseconds */
+  timeoutMs: number;
+  /** Dependencies (stage IDs that must complete first) */
+  dependsOn: string[];
+}
+
+/** Result from executing a stage */
+export interface StageExecutionResult {
+  stageId: string;
+  results: ParallelExecutionResult[];
+  status: "completed" | "partial" | "failed";
+  durationMs: number;
+}
+
+/**
+ * Executes a multi-stage parallel plan.
+ *
+ * Stages are executed in order, respecting dependencies.
+ * Within each stage, agents run in parallel.
+ */
+export async function executeParallelPlan(
+  plan: ParallelExecutionPlan,
+  agentRegistry: AgentRegistry,
+  skillRegistry: SkillRegistry,
+  options: ParallelExecutionOptions,
+  providerConfig?: ProviderConfig,
+): Promise<Map<string, StageExecutionResult>> {
+  const results = new Map<string, StageExecutionResult>();
+  const completedStages = new Set<string>();
+
+  if (options.verbose) {
+    log.info(`Executing plan: ${plan.name} (${plan.stages.length} stages)`);
+  }
+
+  for (const stage of plan.stages) {
+    // Check dependencies
+    for (const dep of stage.dependsOn) {
+      if (!completedStages.has(dep)) {
+        throw new Error(`Stage ${stage.stageId} depends on ${dep} which hasn't completed`);
+      }
+    }
+
+    if (options.verbose) {
+      log.info(`Starting stage: ${stage.stageId} (${stage.tasks.length} agents)`);
+    }
+
+    const stageStartTime = Date.now();
+
+    // Execute stage
+    const summary = await executeAgentsInParallel(
+      stage.tasks,
+      agentRegistry,
+      skillRegistry,
+      { ...options, verbose: false },
+      providerConfig,
+    );
+
+    // Determine stage status based on barrier
+    let status: "completed" | "partial" | "failed" = "completed";
+
+    switch (stage.barrier) {
+      case "all":
+        if (summary.errorCount > 0) {
+          status = summary.successCount > 0 ? "partial" : "failed";
+        }
+        break;
+      case "any":
+        status = summary.successCount > 0 ? "completed" : "failed";
+        break;
+      case "quorum":
+        const quorum = stage.quorumCount ?? Math.ceil(stage.tasks.length / 2);
+        status = summary.successCount >= quorum ? "completed" : "partial";
+        break;
+    }
+
+    const stageResult: StageExecutionResult = {
+      stageId: stage.stageId,
+      results: summary.results,
+      status,
+      durationMs: Date.now() - stageStartTime,
+    };
+
+    results.set(stage.stageId, stageResult);
+    completedStages.add(stage.stageId);
+
+    if (options.verbose) {
+      log.info(`Stage ${stage.stageId} ${status} in ${stageResult.durationMs}ms`);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Creates a simple two-stage plan for Review + Validation.
+ */
+export function createReviewValidationPlan(
+  baseTask: string,
+  reviewAgents?: string[],
+  validationAgents?: string[],
+): ParallelExecutionPlan {
+  const reviewConfig = getPhaseParallelConfig("R");
+  const validationConfig = getPhaseParallelConfig("V");
+
+  return {
+    id: `rv-${Date.now()}`,
+    name: "Review and Validation",
+    stages: [
+      {
+        stageId: "review",
+        tasks: createReviewTasks(baseTask, reviewAgents),
+        barrier: reviewConfig.barrier,
+        timeoutMs: 300000, // 5 minutes
+        dependsOn: [],
+      },
+      {
+        stageId: "validation",
+        tasks: createValidationTasks(baseTask, validationAgents ?? validationConfig.agents),
+        barrier: validationConfig.barrier,
+        timeoutMs: 300000, // 5 minutes
+        dependsOn: ["review"],
+      },
+    ],
+  };
 }
 
 /**

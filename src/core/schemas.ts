@@ -71,6 +71,45 @@ export const ProviderConfigSchema = z.object({
   apiKeys: z.record(z.string(), z.string()).optional(),
 });
 
+const BudgetConfigSchema = z.union([
+  z.number().int().positive(),
+  z.object({
+    quick: z.number().int().positive().optional(),
+    small: z.number().int().positive().optional(),
+    medium: z.number().int().positive().optional(),
+    large: z.number().int().positive().optional(),
+  }),
+]);
+
+const LlmFirstConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  output: z
+    .object({
+      structured: z.boolean().default(true),
+      format: z.enum(["compact", "pretty", "raw"]).default("compact"),
+      quiet: z.boolean().default(true),
+    })
+    .default({ structured: true, format: "compact", quiet: true }),
+  budgets: z
+    .object({
+      skills: BudgetConfigSchema.optional(),
+      context: BudgetConfigSchema.optional(),
+    })
+    .default({}),
+  manifold: z
+    .object({
+      enabled: z.boolean().default(true),
+      policy: z.enum(["always", "structuredOnly"]).default("always"),
+    })
+    .default({ enabled: true, policy: "always" }),
+  parallel: z
+    .object({
+      enabled: z.boolean().default(true),
+      phases: z.array(WorkflowPhaseSchema).default(["R", "V"]),
+    })
+    .default({ enabled: true, phases: ["R", "V"] }),
+});
+
 export const FamaConfigSchema = z.object({
   model: z.string().default("sonnet"),
   maxTurns: z.number().int().positive().default(50),
@@ -80,6 +119,13 @@ export const FamaConfigSchema = z.object({
   workflow: WorkflowConfigSchema.default({
     defaultScale: ProjectScale.MEDIUM,
     gates: { requirePlan: true, requireApproval: false },
+  }),
+  llmFirst: LlmFirstConfigSchema.default({
+    enabled: true,
+    output: { structured: true, format: "compact", quiet: true },
+    budgets: {},
+    manifold: { enabled: true, policy: "always" },
+    parallel: { enabled: true, phases: ["R", "V"] },
   }),
   teams: z.record(z.string(), TeamConfigSchema).optional(),
 });
@@ -188,4 +234,8 @@ export const RunAgentOptionsSchema = z.object({
   verbose: z.boolean().optional(),
   permissionMode: z.enum(["default", "acceptEdits", "bypassPermissions"]).optional(),
   onEvent: z.function().optional(),
+  skillTokenBudget: z.number().int().positive().optional(),
+  context: z.string().optional(),
+  structured: z.boolean().optional(),
+  phaseOverride: WorkflowPhaseSchema.optional(),
 });
