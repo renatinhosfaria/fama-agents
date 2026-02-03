@@ -240,6 +240,115 @@ describe("MenuEntrySchema", () => {
   });
 });
 
+describe("SkillFrontmatterSchema — Agent Skills Specification fields", () => {
+  it("should accept license field", () => {
+    const result = SkillFrontmatterSchema.safeParse({
+      name: "test",
+      license: "MIT",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept compatibility field", () => {
+    const result = SkillFrontmatterSchema.safeParse({
+      name: "test",
+      compatibility: ">=1.0.0",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept metadata object", () => {
+    const result = SkillFrontmatterSchema.safeParse({
+      name: "test",
+      metadata: { author: "team", version: "2.0" },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept allowed-tools array", () => {
+    const result = SkillFrontmatterSchema.safeParse({
+      name: "test",
+      "allowed-tools": ["Read", "Write", "Bash"],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("FamaConfigSchema — edge cases", () => {
+  it("should accept maxTurns of 1", () => {
+    const result = FamaConfigSchema.safeParse({ maxTurns: 1 });
+    expect(result.success).toBe(true);
+  });
+
+  it("should reject maxTurns of 0", () => {
+    const result = FamaConfigSchema.safeParse({ maxTurns: 0 });
+    expect(result.success).toBe(false);
+  });
+
+  it("should accept very large maxTurns", () => {
+    const result = FamaConfigSchema.safeParse({ maxTurns: 10000 });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept custom workflow gates", () => {
+    const result = FamaConfigSchema.safeParse({
+      workflow: {
+        gates: {
+          requirePlan: false,
+          requireApproval: true,
+          gates: [{ type: "require_tests", phases: ["E->V"] }],
+        },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept teams configuration", () => {
+    const result = FamaConfigSchema.safeParse({
+      teams: {
+        backend: {
+          name: "Backend Team",
+          description: "Backend specialists",
+          agents: ["backend-specialist", "database-specialist"],
+          defaultSkills: ["test-driven-development"],
+        },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept provider configuration", () => {
+    const result = FamaConfigSchema.safeParse({
+      provider: {
+        default: "claude",
+        fallback: ["openai"],
+        apiKeys: { openai: "key-123" },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("RunAgentOptionsSchema — edge cases", () => {
+  it("should accept dryRun flag", () => {
+    const result = RunAgentOptionsSchema.safeParse({ task: "test", dryRun: true });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept skillTokenBudget", () => {
+    const result = RunAgentOptionsSchema.safeParse({ task: "test", skillTokenBudget: 5000 });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept bypassPermissions mode", () => {
+    const result = RunAgentOptionsSchema.safeParse({
+      task: "test",
+      permissionMode: "bypassPermissions",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
 describe("AgentFrontmatterSchema — persona/menu/critical_actions", () => {
   it("should accept frontmatter with persona", () => {
     const result = AgentFrontmatterSchema.safeParse({

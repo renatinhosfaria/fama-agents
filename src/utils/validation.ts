@@ -63,6 +63,48 @@ export function normalizeOptionalPhases(
   return phases;
 }
 
+/**
+ * Validates a skill name against the Agent Skills Specification.
+ * Returns an array of warning messages (empty = valid).
+ */
+export function validateSkillName(name: string, dirName: string): string[] {
+  const warnings: string[] = [];
+  if (name.length > 64) {
+    warnings.push(`Skill name "${name}" exceeds 64 characters (${name.length}).`);
+  }
+  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(name) && !/^[a-z0-9]$/.test(name)) {
+    warnings.push(
+      `Skill name "${name}" must be lowercase alphanumeric with hyphens, no leading/trailing hyphens.`,
+    );
+  }
+  if (name.includes("--")) {
+    warnings.push(`Skill name "${name}" must not contain consecutive hyphens.`);
+  }
+  if (name !== dirName) {
+    warnings.push(`Skill name "${name}" does not match directory name "${dirName}".`);
+  }
+  return warnings;
+}
+
+/**
+ * Validates a skill description against the Agent Skills Specification.
+ * Returns an array of warning messages (empty = valid).
+ */
+export function validateSkillDescription(description: string): string[] {
+  const warnings: string[] = [];
+  if (description.length > 1024) {
+    warnings.push(
+      `Skill description exceeds 1024 characters (${description.length}).`,
+    );
+  }
+  if (!description.toLowerCase().startsWith("use when")) {
+    warnings.push(
+      `Skill description should start with "Use when" for CSO discoverability.`,
+    );
+  }
+  return warnings;
+}
+
 export function normalizeOptionalModel(
   value: unknown,
   context: string,

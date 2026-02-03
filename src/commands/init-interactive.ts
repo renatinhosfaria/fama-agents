@@ -1,7 +1,7 @@
 import { existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { stringify as yamlStringify } from "yaml";
-import { askText, askSelect, askConfirm, askMultiSelect } from "../utils/interactive.js";
+import { askText, askSelect, askConfirm } from "../utils/interactive.js";
 import { scaffoldDocs } from "../services/scaffold/scaffold-service.js";
 import { log } from "../utils/logger.js";
 

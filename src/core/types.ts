@@ -56,14 +56,32 @@ export interface PhaseDefinition {
 }
 
 // ─── Skills ───
-export interface ParsedSkill {
+
+/** Level 1: ~100 tokens, loaded at startup for all skills. */
+export interface SkillSummary {
   slug: string;
   name: string;
   description: string;
-  content: string;
   phases: WorkflowPhase[];
   source: "built-in" | "project" | "user";
   filePath: string;
+  // Agent Skills Specification optional fields:
+  license?: string;
+  compatibility?: string;
+  metadata?: Record<string, string>;
+  allowedTools?: string[];
+}
+
+/** Level 2: Full SKILL.md body, loaded on demand. Extends SkillSummary. */
+export interface ParsedSkill extends SkillSummary {
+  content: string;
+}
+
+/** Level 3: Reference files from skills/<name>/references/, loaded on demand. */
+export interface SkillReference {
+  slug: string;
+  fileName: string;
+  content: string;
 }
 
 // ─── Persona ───
@@ -100,6 +118,14 @@ export interface AgentConfig {
   hasSidecar?: boolean;
 }
 
+/** Skill metadata for ranking purposes */
+export interface SkillForRanking {
+  slug: string;
+  name: string;
+  description: string;
+  content: string;
+}
+
 export interface BuildPromptOptions {
   playbookContent: string;
   skillContents: string[];
@@ -108,6 +134,12 @@ export interface BuildPromptOptions {
   memory?: AgentMemory;
   stackContext?: string;
   codebaseContext?: string;
+  /** Max estimated tokens for all skills combined. Skills beyond budget are skipped. */
+  skillTokenBudget?: number;
+  /** Task description for skill relevance ranking */
+  task?: string;
+  /** Skills with metadata for ranking (alternative to skillContents) */
+  skillsForRanking?: SkillForRanking[];
 }
 
 export interface AgentFactory {
@@ -130,8 +162,12 @@ export interface RunAgentOptions {
   cwd?: string;
   verbose?: boolean;
   dryRun?: boolean;
+  /** Max estimated tokens for all skills combined. Skills beyond budget are skipped. */
+  skillTokenBudget?: number;
   permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
   onEvent?: (event: RunAgentEvent) => void;
+  /** Project scale for model routing (auto-detected if not provided) */
+  scale?: ProjectScale;
 }
 
 export interface RunAgentMetrics {
@@ -258,10 +294,20 @@ export interface LLMProvider {
   query(prompt: string, options: LLMQueryOptions): AsyncIterable<LLMStreamEvent>;
 }
 
+/** Model routing configuration for scale-based model selection */
+export interface ModelRoutingConfig {
+  quick: string;
+  small: string;
+  medium: string;
+  large: string;
+}
+
 export interface ProviderConfig {
   default: string;
   fallback?: string[];
   apiKeys?: Record<string, string>;
+  /** Model routing by project scale */
+  routing?: ModelRoutingConfig;
 }
 
 // ─── Agent Memory (Sidecar) ───

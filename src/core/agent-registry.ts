@@ -7,6 +7,7 @@ import type {
   AgentFactory,
   AgentMemory,
   FamaAgentDefinition,
+  SkillForRanking,
   WorkflowPhase,
 } from "./types.js";
 import { agentFactories } from "../agents/index.js";
@@ -176,11 +177,19 @@ export class AgentRegistry {
   /**
    * Builds an AgentDefinition for the Claude SDK.
    * Combines the playbook prompt with injected skill content.
+   *
+   * When task and skillsForRanking are provided, skills are ranked
+   * by relevance to the task using TF-IDF cosine similarity.
    */
   buildDefinition(
     slug: string,
     skillContents: string[],
     memory?: AgentMemory,
+    skillTokenBudget?: number,
+    options?: {
+      task?: string;
+      skillsForRanking?: SkillForRanking[];
+    },
   ): FamaAgentDefinition | null {
     const config = this.getBySlug(slug);
     if (!config) return null;
@@ -191,6 +200,9 @@ export class AgentRegistry {
       persona: config.persona,
       criticalActions: config.criticalActions,
       memory,
+      skillTokenBudget,
+      task: options?.task,
+      skillsForRanking: options?.skillsForRanking,
     };
 
     const factory = this.factories.get(slug);

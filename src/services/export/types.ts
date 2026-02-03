@@ -1,4 +1,4 @@
-import type { AgentConfig, FamaConfig, ParsedSkill } from "../../core/types.js";
+import type { AgentConfig, FamaConfig, SkillSummary } from "../../core/types.js";
 import type { DetectedStack } from "../stack/types.js";
 
 /**
@@ -6,7 +6,7 @@ import type { DetectedStack } from "../stack/types.js";
  */
 export interface ExportContext {
   agents: AgentConfig[];
-  skills: ParsedSkill[];
+  skills: SkillSummary[];
   config: FamaConfig;
   stack?: DetectedStack;
   projectDir: string;

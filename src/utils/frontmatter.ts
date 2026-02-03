@@ -5,6 +5,11 @@ export interface SkillFrontmatter {
   name?: string;
   description?: string;
   phases?: WorkflowPhase[];
+  // Agent Skills Specification optional fields:
+  license?: string;
+  compatibility?: string;
+  metadata?: Record<string, string>;
+  "allowed-tools"?: string[];
 }
 
 export interface AgentFrontmatter {

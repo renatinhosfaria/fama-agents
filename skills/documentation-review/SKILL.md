@@ -1,6 +1,6 @@
 ---
 name: documentation-review
-description: Review documentation completeness for README, API docs, architecture decisions, and user guides
+description: Use when reviewing documentation for accuracy, completeness, and clarity before publication. Covers README, API docs, architecture decisions, and user guides.
 phases: [C]
 ---
 

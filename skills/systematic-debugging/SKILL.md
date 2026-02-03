@@ -1,6 +1,6 @@
 ---
 name: systematic-debugging
-description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes
+description: Use when encountering any bug, test failure, or unexpected behavior. Requires root cause investigation before any fix attempt.
 phases: [E, V]
 ---
 
@@ -8,80 +8,35 @@ phases: [E, V]
 
 ## The Iron Law
 
-**NO FIXES WITHOUT DIAGNOSIS.** The urge to "just try something" is the enemy. Every fix attempt without understanding the root cause is a coin flip that can introduce new bugs.
+**NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.** The urge to "just try something" is the enemy. Every fix attempt without understanding the root cause is a coin flip that introduces new bugs.
 
-## Process
+## 4 Mandatory Phases
 
-### Phase 1: Root Cause Investigation
+1. **Investigate (NO fixes yet)** — Reproduce the bug. Get the exact error, stack trace, or unexpected output. Read the code — do not guess what it does. Trace execution from input to failure point. Collect all evidence before forming any hypothesis.
 
-**Goal: Gather evidence. NO FIXES YET.**
+2. **Analyze Patterns** — Find similar working code in the codebase and diff it against the broken code. Check recent commits (`git log`, `git diff`). Verify if upstream dependencies changed assumptions.
 
-1. **Reproduce the bug** — get the exact error message, stack trace, or unexpected output
-2. **Identify the scope** — which files, functions, and data are involved?
-3. **Read the relevant code** — do not guess what it does. Read it.
-4. **Trace the execution path** — from input to the point of failure
-5. **Collect all evidence** before forming any hypothesis
+3. **Hypothesize and Test** — Form a written hypothesis: "The bug occurs because X." Predict what a fix looks like. Test with a minimal isolated change (temporary log, assertion). If rejected, return to Phase 1 with new evidence.
 
-```
-## Evidence Log
-- Error: [exact error message or unexpected behavior]
-- Location: [file:line where it manifests]
-- Input: [what triggers it]
-- Expected: [what should happen]
-- Actual: [what actually happens]
-- Stack trace: [if available]
-```
+4. **Implement** — Write a failing test that reproduces the bug. Implement the minimal fix. Confirm the test passes. Run the full test suite for regressions. Document root cause in the commit message.
 
-### Phase 2: Pattern Analysis
+## Critical Guardrail
 
-**Goal: Find working examples to contrast with the failure.**
+**After 3 unsuccessful fix attempts, STOP.** Question the underlying architecture. The root cause may be a design problem, not a code problem.
 
-1. **Find similar code that works** — same pattern used elsewhere in the codebase
-2. **Diff the working code against the broken code** — what is different?
-3. **Check recent changes** — did a recent commit introduce the issue? (`git log`, `git diff`)
-4. **Check dependencies** — did an upstream change break an assumption?
+## Red Flags — STOP immediately if you:
 
-### Phase 3: Hypothesis and Testing
-
-**Goal: Apply the scientific method.**
-
-1. **Form a hypothesis** — "The bug occurs because X"
-2. **Predict what a fix would look like** — "If my hypothesis is correct, changing Y should fix it"
-3. **Test the hypothesis** — add a temporary log, assertion, or minimal change to verify
-4. **Confirm or reject** — if rejected, return to Phase 1 with new evidence
-
-```
-## Hypothesis
-- Cause: [what you believe is wrong]
-- Evidence: [what supports this belief]
-- Prediction: [what should happen if you're right]
-- Test: [how to verify without a full fix]
-- Result: [confirmed / rejected]
-```
-
-### Phase 4: Implementation
-
-**Goal: Fix with confidence.**
-
-1. **Write a test that reproduces the bug** — this test must FAIL before the fix
-2. **Implement the minimal fix** — change as little as possible
-3. **Run the reproducing test** — it must PASS now
-4. **Run the full test suite** — no regressions
-5. **Document what caused the bug** in the commit message
-
-## Quick Reference
-
-| Phase | Action | Output |
-|-------|--------|--------|
-| Investigation | Gather evidence, NO fixes | Evidence log |
-| Pattern Analysis | Find working vs broken code | Differences identified |
-| Hypothesis | Scientific method | Confirmed root cause |
-| Implementation | Test-first fix | Passing test + minimal fix |
+- Change code before Phase 1 is complete
+- Make more than one change at a time to "see what happens"
+- Ignore the stack trace or error message
+- Skip reproducing the bug before attempting to fix it
+- Skip the failing test in Phase 4
+- Blame external dependencies without evidence
 
 ## Checklist
 
 - [ ] Bug reproduced with exact error/behavior documented
-- [ ] Evidence log filled (error, location, input, expected, actual)
+- [ ] Evidence collected (error, location, input, expected vs actual)
 - [ ] Similar working code found for comparison
 - [ ] Recent changes checked (git log/diff)
 - [ ] Hypothesis formed with evidence and prediction
@@ -89,23 +44,6 @@ phases: [E, V]
 - [ ] Failing test written that reproduces the bug
 - [ ] Minimal fix implemented and all tests pass
 
-## Rationalization Table
+## References
 
-| Excuse | Reality |
-|--------|---------|
-| "I know what the bug is, let me just fix it" | You think you know. Verify first. Misdiagnosis wastes more time. |
-| "It's probably just a typo" | Typos don't need debugging. If you're here, it's not a typo. |
-| "Let me try a few things" | Random changes create random bugs. Diagnose systematically. |
-| "The error message tells me exactly what's wrong" | Error messages describe symptoms, not causes. Investigate. |
-| "I'll just revert the last change" | Reverting without understanding means the bug will return. |
-| "It works on my machine" | Then the difference between environments IS the bug. Find it. |
-
-## Red Flags
-
-**STOP immediately if you catch yourself:**
-- Changing code before Phase 1 is complete
-- Making more than one change at a time to "see what happens"
-- Ignoring the stack trace or error message
-- Not reproducing the bug before attempting to fix it
-- Skipping the failing test in Phase 4
-- Blaming external dependencies without evidence
+- [Evidence Log, Hypothesis Template & Tables](references/templates.md)

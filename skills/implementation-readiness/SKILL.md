@@ -1,6 +1,6 @@
 ---
 name: implementation-readiness
-description: Validates alignment between PRD, architecture, and stories before execution begins
+description: Use when verifying that all prerequisites are met before starting implementation. Validates alignment between PRD, architecture, and stories.
 phases: [P, R]
 ---
 

@@ -1,6 +1,46 @@
-import type { LLMProvider, ProviderConfig } from "./types.js";
+import type { LLMProvider, ModelRoutingConfig, ProviderConfig } from "./types.js";
+import { ProjectScale } from "./types.js";
 import { ProviderNotFoundError } from "./errors.js";
 import { log } from "../utils/logger.js";
+
+// ─── Model Routing ───
+
+/** Default model routing configuration */
+const DEFAULT_MODEL_ROUTING: ModelRoutingConfig = {
+  quick: "haiku",
+  small: "sonnet",
+  medium: "sonnet",
+  large: "opus",
+};
+
+/**
+ * Gets the appropriate model for a given project scale.
+ *
+ * @param scale - The project scale (QUICK, SMALL, MEDIUM, LARGE)
+ * @param config - Optional custom routing configuration
+ * @returns The model string to use
+ */
+export function getModelForScale(
+  scale: ProjectScale,
+  config?: ModelRoutingConfig,
+): string {
+  const routing = config ?? DEFAULT_MODEL_ROUTING;
+
+  switch (scale) {
+    case ProjectScale.QUICK:
+      return routing.quick;
+    case ProjectScale.SMALL:
+      return routing.small;
+    case ProjectScale.MEDIUM:
+      return routing.medium;
+    case ProjectScale.LARGE:
+      return routing.large;
+    default:
+      return routing.medium;
+  }
+}
+
+// ─── Provider Resolution ───
 
 /**
  * Parses a model string into provider and model parts.

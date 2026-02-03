@@ -66,7 +66,8 @@ export const copilotPreset: ExportPreset = {
       sections.push("## Skills Reference\n");
       for (const skill of context.skills) {
         sections.push(`### ${skill.name}\n`);
-        sections.push(skill.content);
+        sections.push(`${skill.description}\n`);
+        sections.push(`Phases: ${skill.phases.join(", ")}`);
         sections.push("");
       }
     }

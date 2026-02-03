@@ -1,9 +1,8 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { resolve, relative, extname } from "node:path";
+import { resolve, extname } from "node:path";
 import type { CodebaseAnalysis } from "./types.js";
 import { detectArchitecture, discoverLayers } from "./architecture-detector.js";
 import { mapDependencies, extractPublicApi } from "./dependency-mapper.js";
-import { parseTypeScriptFile } from "./parsers/typescript-parser.js";
 
 const IGNORE_DIRS = new Set([
   "node_modules",

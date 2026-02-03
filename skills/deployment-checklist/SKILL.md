@@ -1,6 +1,6 @@
 ---
 name: deployment-checklist
-description: Pre-deploy validation checklist to verify build, tests, configuration, and infrastructure readiness
+description: Use when preparing a release for production deployment. Validates build, tests, configuration, and infrastructure readiness.
 phases: [C]
 ---
 

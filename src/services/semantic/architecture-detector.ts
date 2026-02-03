@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { resolve, relative, basename } from "node:path";
+import { resolve, relative } from "node:path";
 import type { ArchitecturePattern, LayerInfo } from "./types.js";
 
 const IGNORE_DIRS = new Set([

@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Revisão adversarial forçada — zero findings dispara re-análise obrigatória
+description: Use when you need a devil's advocate review to stress-test decisions, designs, or implementations before committing. Zero findings triggers mandatory re-analysis.
 phases: [R, V]
 ---
 

@@ -1,14 +1,15 @@
 import type { AgentRegistry } from "./agent-registry.js";
 import type { SkillRegistry } from "./skill-registry.js";
-import type { ProviderConfig, RunAgentOptions } from "./types.js";
+import type { ProviderConfig, RunAgentOptions, SkillForRanking } from "./types.js";
 import { log } from "../utils/logger.js";
 import { startSpan, endSpan } from "../utils/observability.js";
 import { loadMemory } from "./agent-memory.js";
 import { AgentNotFoundError, AgentBuildError, AgentExecutionError } from "./errors.js";
-import { resolveProviderWithFallback } from "./llm-provider.js";
+import { resolveProviderWithFallback, getModelForScale } from "./llm-provider.js";
 
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 1000;
+const JITTER_FACTOR = 0.3; // 0-30% random jitter
 
 function isRetryableError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
@@ -22,6 +23,16 @@ function isRetryableError(err: unknown): boolean {
     msg.includes("econnrefused") ||
     msg.includes("timeout")
   );
+}
+
+/**
+ * Calculates retry delay with exponential backoff and random jitter.
+ * Jitter helps prevent thundering herd when multiple agents retry simultaneously.
+ */
+function getRetryDelay(attempt: number, baseDelayMs: number): number {
+  const exponentialDelay = baseDelayMs * Math.pow(2, attempt);
+  const jitter = Math.random() * JITTER_FACTOR * exponentialDelay;
+  return Math.floor(exponentialDelay + jitter);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -49,18 +60,28 @@ export async function runAgent(
     throw new AgentNotFoundError(agentSlug);
   }
 
-  // Collect skill content to inject
+  // Collect skills with metadata for relevance ranking
   const skillSlugs = [...agentConfig.defaultSkills, ...(options.skills ?? [])];
   const uniqueSlugs = [...new Set(skillSlugs)];
   const missingSkills: string[] = [];
-  const skillContents = uniqueSlugs.flatMap((slug) => {
+  const skillsForRanking: SkillForRanking[] = [];
+  const skillContents: string[] = [];
+
+  for (const slug of uniqueSlugs) {
     const skill = skillRegistry.getBySlug(slug);
     if (!skill) {
       missingSkills.push(slug);
-      return [];
+      continue;
     }
-    return [skill.content];
-  });
+    // Collect both formats for flexibility
+    skillContents.push(skill.content);
+    skillsForRanking.push({
+      slug: skill.slug,
+      name: skill.name,
+      description: skill.description,
+      content: skill.content,
+    });
+  }
 
   if (missingSkills.length > 0) {
     log.warn(`Missing skills ignored: ${missingSkills.join(", ")}`);
@@ -71,15 +92,36 @@ export async function runAgent(
     ? loadMemory(agentSlug, options.cwd ?? process.cwd())
     : undefined;
 
-  // Build the agent definition
-  const agentDef = agentRegistry.buildDefinition(agentSlug, skillContents, memory);
+  // Build the agent definition with skill ranking support
+  const agentDef = agentRegistry.buildDefinition(
+    agentSlug,
+    skillContents,
+    memory,
+    options.skillTokenBudget,
+    {
+      task: options.task,
+      skillsForRanking,
+    },
+  );
   if (!agentDef) {
     throw new AgentBuildError(agentSlug);
   }
 
-  // Resolve provider and model
-  const modelInput =
-    options.model ?? (agentConfig.model === "inherit" ? undefined : agentConfig.model);
+  // Resolve provider and model with scale-based routing
+  let modelInput = options.model;
+
+  // If no explicit model, try scale-based routing
+  if (!modelInput && options.scale !== undefined) {
+    modelInput = getModelForScale(options.scale, providerConfig?.routing);
+    if (options.verbose) {
+      log.dim(`Model routing: scale=${options.scale} → model=${modelInput}`);
+    }
+  }
+
+  // Fall back to agent config model
+  if (!modelInput && agentConfig.model !== "inherit") {
+    modelInput = agentConfig.model;
+  }
 
   const { provider, resolvedModel } = await resolveProviderWithFallback(modelInput, providerConfig);
 
@@ -191,7 +233,7 @@ export async function runAgent(
         break;
       } catch (err) {
         if (attempt < MAX_RETRIES && isRetryableError(err)) {
-          const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+          const delay = getRetryDelay(attempt, RETRY_BASE_DELAY_MS);
           log.warn(`Retrying (attempt ${attempt + 1}/${MAX_RETRIES}) after ${delay}ms...`);
           await sleep(delay);
           continue;

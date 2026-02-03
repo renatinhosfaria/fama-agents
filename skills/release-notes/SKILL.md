@@ -1,6 +1,6 @@
 ---
 name: release-notes
-description: Generate structured changelog and release notes from commits and PRs
+description: Use when generating release notes from completed work. Extracts changes from commits and PRs, categorizes, and formats for stakeholders.
 phases: [C]
 ---
 

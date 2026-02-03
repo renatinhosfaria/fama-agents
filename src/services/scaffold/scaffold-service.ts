@@ -1,8 +1,7 @@
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
-import { resolve, basename } from "node:path";
-import { getTemplates, getTemplateNames } from "./templates.js";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { getTemplates } from "./templates.js";
 import type { ScaffoldFile, ScaffoldStatus } from "./types.js";
-import { log } from "../../utils/logger.js";
 
 export type { ScaffoldFile, ScaffoldStatus, ScaffoldTemplate } from "./types.js";
 export { getTemplates, getTemplateNames } from "./templates.js";
