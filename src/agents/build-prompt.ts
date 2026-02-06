@@ -1,4 +1,4 @@
-import type { AgentMemory, BuildPromptOptions, PersonaConfig, SkillForRanking } from "../core/types.js";
+import type { AgentMemory, BuildPromptOptions, PersonaConfig } from "../core/types.js";
 import { rankSkillsByRelevance, selectSkillsWithinBudget } from "../core/skill-ranking.js";
 
 function buildPersonaSection(persona: PersonaConfig): string {

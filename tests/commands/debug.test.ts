@@ -5,6 +5,23 @@ vi.mock("../../src/core/agent-runner.js", () => ({
   runAgent: vi.fn().mockResolvedValue("Debug result"),
 }));
 
+vi.mock("../../src/utils/llm-first.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../src/utils/llm-first.js")>();
+  return {
+    ...original,
+    ensureManifold: vi.fn().mockReturnValue({
+      version: "1.0.0",
+      workflowName: "test",
+      phases: { P: [], R: [], E: [], V: [], C: [] },
+      globals: { workflowState: null, activeConstraints: [] },
+      artifacts: {},
+      updatedAt: new Date().toISOString(),
+    }),
+    selectManifoldContext: vi.fn().mockReturnValue({ context: "", tokens: 0 }),
+    recordOutputToManifold: vi.fn(),
+  };
+});
+
 import { runAgent } from "../../src/core/agent-runner.js";
 import { debugCommand } from "../../src/commands/debug.js";
 

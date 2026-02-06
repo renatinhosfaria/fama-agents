@@ -390,10 +390,11 @@ export async function executeParallelPlan(
       case "any":
         status = summary.successCount > 0 ? "completed" : "failed";
         break;
-      case "quorum":
+      case "quorum": {
         const quorum = stage.quorumCount ?? Math.ceil(stage.tasks.length / 2);
         status = summary.successCount >= quorum ? "completed" : "partial";
         break;
+      }
     }
 
     const stageResult: StageExecutionResult = {
