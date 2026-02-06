@@ -28,6 +28,14 @@ export {
   executeAgentsInParallel,
   createValidationTasks,
   formatParallelResults,
+  // Phase-based parallel execution
+  getPhaseParallelConfig,
+  isPhaseParallelizable,
+  createPhaseTasks,
+  createReviewTasks,
+  executeParallelPlan,
+  createReviewValidationPlan,
+  DEFAULT_PHASE_PARALLEL_CONFIG,
 } from "./core/parallel-executor.js";
 export {
   loadPhaseContext,
@@ -36,6 +44,30 @@ export {
   extractSummary,
   extractArtifacts,
 } from "./workflow/context-loader.js";
+// Context Manifold
+export {
+  createEmptyManifold,
+  loadManifold,
+  loadManifoldWithDetails,
+  saveManifold,
+  saveManifoldWithDetails,
+  addOutputToManifold,
+  selectContextForPhase,
+  formatManifoldContext,
+  updateStackInfo,
+  updateCodebaseSummary,
+  addConstraint,
+  resolveIssue,
+  getUnresolvedIssues,
+  getAllDecisions,
+  getArtifact,
+  getFileArtifacts,
+  convertLegacyOutput,
+  computeHash,
+  ManifoldError,
+  MANIFOLD_VERSION,
+  MANIFOLD_FILENAME,
+} from "./core/context-manifold.js";
 export {
   assessValidationQuality,
   formatQualityScore,
@@ -121,11 +153,31 @@ export type {
   ParallelExecutionResult,
   ParallelExecutionOptions,
   ParallelExecutionSummary,
+  // Phase-based parallel execution types
+  PhaseParallelConfig,
+  ParallelExecutionPlan,
+  ExecutionStage,
+  StageExecutionResult,
 } from "./core/parallel-executor.js";
 export type {
   PhaseContext,
   PhaseOutputSummary,
 } from "./workflow/context-loader.js";
+// Context Manifold types
+export type {
+  ContextManifold,
+  PhaseManifoldEntry,
+  ManifoldDecision,
+  ManifoldIssue,
+  ArtifactEntry,
+  StackInfo,
+  CodebaseSummary,
+  GlobalContext,
+  SelectedContext,
+  ManifoldErrorCode,
+  LoadManifoldResult,
+  SaveManifoldResult,
+} from "./core/context-manifold.js";
 export type {
   ScaleSignal,
   ScaleDetectionResult,
@@ -167,3 +219,132 @@ export type {
   ExportResult,
   ExportPreset,
 } from "./services/export/types.js";
+
+// ─── LLM-First Architecture ───
+
+// Structured Output Protocol
+export {
+  CURRENT_SCHEMA_VERSION,
+  createSuccessOutput,
+  createErrorOutput,
+  addArtifact,
+  addDecision,
+  addIssue,
+  parseStructuredOutput,
+  parseStructuredOutputWithDetails,
+  isStructuredOutput,
+  serializeCompact,
+  serializeReadable,
+} from "./core/output-protocol.js";
+
+export type {
+  StructuredAgentOutput,
+  OutputMeta,
+  ResultPayload,
+  ResultStatus,
+  Artifact,
+  ArtifactType,
+  Decision,
+  Reversibility,
+  Issue,
+  IssueSeverity,
+  HandoffInfo,
+  ParseResult,
+} from "./core/output-protocol.js";
+
+// Token Estimation
+export {
+  estimateTokens,
+  estimateTokensCharBased,
+  estimateTokensWordBased,
+  detectCodeRatio,
+  getBudgetForScale,
+  createCustomBudget,
+  totalBudget,
+  createUsageTracker,
+  remainingBudget,
+  isBudgetExceeded,
+  truncateToTokenBudget,
+  splitIntoChunks,
+  createSkillTokenCache,
+  BUDGET_PROFILES,
+} from "./core/token-estimator.js";
+
+export type {
+  TokenBudgetAllocation,
+  TokenUsageTracker,
+  SkillTokenCache,
+} from "./core/token-estimator.js";
+
+// Compact Prompt Format
+export {
+  buildCompactPrompt,
+  convertMarkdownToCompact,
+  convertSkillToCompiled,
+  estimateTokenSavings,
+} from "./core/compact-prompt.js";
+
+export type {
+  CompactPromptSection,
+  CompactSkillSection,
+  CompactContextSection,
+  CompactPromptOptions,
+} from "./core/compact-prompt.js";
+
+// Output Schemas
+export {
+  OUTPUT_SCHEMA_REGISTRY,
+  getOutputSchema,
+  validateAgentOutput,
+  ArchitectOutputSchema,
+  validateArchitectOutput,
+  CodeReviewOutputSchema,
+  validateCodeReviewOutput,
+  isBlocking,
+  getCriticalIssues,
+  countBySeverity,
+  SecurityAuditOutputSchema,
+  validateSecurityAuditOutput,
+  hasCriticalVulnerabilities,
+  getImmediateActions,
+  calculateRiskScore,
+  TestWriterOutputSchema,
+  validateTestWriterOutput,
+  isCoverageThresholdMet,
+  getCriticalGaps,
+  countByTestType,
+  getLineCoverage,
+} from "./schemas/outputs/index.js";
+
+export type {
+  ArchitectOutput,
+  ArchitectContent,
+  Component,
+  ComponentType,
+  Interface,
+  DataFlow,
+  TradeOff,
+  CodeReviewOutput,
+  CodeReviewContent,
+  ReviewIssue,
+  IssueCategory,
+  Suggestion,
+  FileSummary,
+  ReviewVerdict,
+  SecurityAuditOutput,
+  SecurityAuditContent,
+  Vulnerability,
+  VulnerabilityCategory,
+  DependencyVulnerability,
+  SecurityRecommendation,
+  Cvss,
+  TestWriterOutput,
+  TestWriterContent,
+  TestCase,
+  TestSuite,
+  TestType,
+  CoverageReport,
+  CoverageMetrics,
+  FileCoverage,
+  TestGap,
+} from "./schemas/outputs/index.js";
