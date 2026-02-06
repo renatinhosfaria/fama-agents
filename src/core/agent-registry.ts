@@ -1,6 +1,5 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { resolve, basename, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve, basename } from "node:path";
 import { extractFrontmatter, type AgentFrontmatter } from "../utils/frontmatter.js";
 import type {
   AgentConfig,
@@ -19,15 +18,13 @@ import {
   normalizeOptionalString,
   normalizeOptionalStringArray,
 } from "../utils/validation.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { getPackageRoot } from "../utils/package-root.js";
 
 /**
  * Gets the built-in agents directory (package root /agents).
  */
 function getBuiltInAgentsDir(): string {
-  return resolve(__dirname, "..", "..", "agents");
+  return resolve(getPackageRoot(), "agents");
 }
 
 /**

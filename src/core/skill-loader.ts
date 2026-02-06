@@ -1,6 +1,5 @@
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { extractFrontmatter, type SkillFrontmatter } from "../utils/frontmatter.js";
 import type { ParsedSkill, SkillSummary, SkillReference } from "./types.js";
 import { log } from "../utils/logger.js";
@@ -10,15 +9,13 @@ import {
   validateSkillName,
   validateSkillDescription,
 } from "../utils/validation.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { getPackageRoot } from "../utils/package-root.js";
 
 /**
  * Gets the built-in skills directory (package root /skills).
  */
 function getBuiltInSkillsDir(): string {
-  return resolve(__dirname, "..", "..", "skills");
+  return resolve(getPackageRoot(), "skills");
 }
 
 /**

@@ -1,0 +1,19 @@
+{
+  "name": "fama-agents-dev",
+  "description": "Development marketplace for fama-agents plugin",
+  "owner": {
+    "name": "renatinhosfaria",
+    "email": "renatinhosfaria@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "fama-agents",
+      "description": "Sistema completo de agentes de codificacao e skills com workflow PREVEC",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "renatinhosfaria"
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "fama-agents",
+  "version": "0.1.0",
+  "description": "Sistema completo de agentes de codificacao e skills com workflow PREVEC, MCP tools, e 14 agentes especializados para desenvolvimento de software",
+  "author": {
+    "name": "renatinhosfaria",
+    "email": "renatinhosfaria@gmail.com",
+    "url": "https://github.com/renatinhosfaria"
+  },
+  "homepage": "https://github.com/renatinhosfaria/fama-agents",
+  "repository": "https://github.com/renatinhosfaria/fama-agents",
+  "license": "MIT",
+  "keywords": [
+    "agents",
+    "coding",
+    "workflow",
+    "skills",
+    "code-review",
+    "architecture",
+    "tdd",
+    "debugging"
+  ],
+  "mcpServers": {
+    "fama-agents": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/src/mcp/plugin-entry.js"],
+      "env": {
+        "FAMA_ROOT": "${CLAUDE_PLUGIN_ROOT}"
+      }
+    }
+  }
+}

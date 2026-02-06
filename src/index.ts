@@ -196,6 +196,7 @@ export { loadModule, installModule, uninstallModule } from "./core/module-loader
 export { selectAgents, synthesize } from "./core/party-orchestrator.js";
 export { t, initI18n, resetI18n, getLocale, getSupportedLocales } from "./utils/i18n/index.js";
 export { GateRegistry } from "./workflow/gate-registry.js";
+export { getPackageRoot } from "./utils/package-root.js";
 export { CodebaseAnalyzer } from "./services/semantic/codebase-analyzer.js";
 export {
   scaffoldDocs,

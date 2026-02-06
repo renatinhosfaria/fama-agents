@@ -1,7 +1,0 @@
-{
-  "name": "fama-agents",
-  "version": "0.1.0",
-  "description": "Complete coding agent framework with 15 specialized skills, 14 agent archetypes, and PREVEC workflow engine for intelligent software development automation.",
-  "skills_dir": "skills",
-  "entry_point": "dist/bin/fama.js"
-}
